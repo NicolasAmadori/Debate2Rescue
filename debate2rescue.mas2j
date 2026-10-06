@@ -1,0 +1,10 @@
+MAS debate2rescue {
+
+	infrastructure: Centralised
+
+	agents:
+		agent1 hello_agent;
+
+	aslSourcePath:
+		"src/main/asl";
+}
