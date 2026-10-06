@@ -33,7 +33,7 @@ group = "it.unibo.ise.debate2rescue"
 sourceSets {
     main {
         resources {
-            srcDir("src/main/asl")
+            srcDir("src/main/agents")
         }
     }
 }

@@ -6,5 +6,5 @@ MAS debate2rescue {
 		agent1 hello_agent;
 
 	aslSourcePath:
-		"src/main/asl";
+		"src/main/agents";
 }
