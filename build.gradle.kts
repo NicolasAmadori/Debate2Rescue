@@ -1,7 +1,7 @@
 import java.util.Locale
 
 plugins {
-    java
+    application
     id("com.diffplug.spotless") version "8.10.3"
 }
 
@@ -44,17 +44,11 @@ dependencies {
     implementation("it.unibo.tuprolog.argumentation:arg2p-jvm:0.16.6")
 }
 
-file(projectDir).listFiles()?.filter { it.extension == "mas2j" }?.forEach { mas2jFile ->
-    tasks.register<JavaExec>("run${mas2jFile.nameWithoutExtension.capitalized()}Mas") {
-        group = "run"
-        classpath = sourceSets.getByName("main").runtimeClasspath
-        mainClass.set("jason.infra.centralised.RunCentralisedMAS")
-        args(mas2jFile.path)
-        standardInput = System.`in`
-        javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
-    }
+application {
+    mainClass.set("jason.infra.centralised.RunCentralisedMAS")
 }
 
-fun String.capitalized(): String {
-    return this.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+tasks.named<JavaExec>("run") {
+    args("debate2rescue.mas2j")
+    standardInput = System.`in`
 }
