@@ -40,7 +40,7 @@ sourceSets {
 
 dependencies {
     implementation("io.github.jason-lang:jason-interpreter:3.2.1")
-    testImplementation("junit", "junit", "6.1.3")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
     implementation("it.unibo.tuprolog.argumentation:arg2p-jvm:0.16.6")
 }
 
@@ -51,4 +51,8 @@ application {
 tasks.named<JavaExec>("run") {
     args("debate2rescue.mas2j")
     standardInput = System.`in`
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
