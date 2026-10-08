@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.awt.Dimension;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 class ModelGeneratorTest {
 
   private ModelGenerator generator;
+  private Dimension expectedGridSize = new Dimension(25, 25);
 
   @BeforeEach
   void setUp() {
@@ -22,23 +24,21 @@ class ModelGeneratorTest {
   @Test
   @DisplayName("generateScenario should initialize TestModel with the specified grid size")
   void testGenerateScenarioGridSize() {
-    int expectedGridSize = 25;
     TestModel model = generator.generateScenario(expectedGridSize);
 
     assertNotNull(model, "Model should not be null");
-    assertEquals(
-        expectedGridSize, model.getGridSize(), "Grid size must match the configured value");
+    assertEquals(expectedGridSize, model.getSize(), "Grid size must match the configured value");
   }
 
   @Test
   @DisplayName("generateScenario should reset emergencyCounter to 0")
   void testGenerateScenarioResetsCounter() {
-    TestModel model = generator.generateScenario(10);
+    TestModel model = generator.generateScenario(expectedGridSize);
 
     generator.generateEmergency(model);
     generator.generateEmergency(model);
 
-    TestModel newModel = generator.generateScenario(10);
+    TestModel newModel = generator.generateScenario(expectedGridSize);
     Optional<TestEmergency> nextEmergency = generator.generateEmergency(newModel);
 
     assertTrue(nextEmergency.isPresent(), "Emergency should be present");
@@ -51,7 +51,7 @@ class ModelGeneratorTest {
   @Test
   @DisplayName("generateEmergency should increment ID monotonically")
   void testGenerateEmergencyIdIncrement() {
-    TestModel model = generator.generateScenario(10);
+    TestModel model = generator.generateScenario(expectedGridSize);
 
     Optional<TestEmergency> first = generator.generateEmergency(model);
     Optional<TestEmergency> second = generator.generateEmergency(model);
@@ -72,8 +72,7 @@ class ModelGeneratorTest {
   @DisplayName(
       "generateEmergency should produce coordinates within bounds and severity between 1 and 5")
   void testGenerateEmergencyBoundsAndSeverity() {
-    int gridSize = 15;
-    TestModel model = generator.generateScenario(gridSize);
+    TestModel model = generator.generateScenario(expectedGridSize);
 
     Optional<TestEmergency> emergencyOpt = generator.generateEmergency(model);
 
@@ -81,10 +80,10 @@ class ModelGeneratorTest {
     TestEmergency emergency = emergencyOpt.get();
 
     assertTrue(
-        emergency.getX() >= 0 && emergency.getX() < gridSize,
+        emergency.getX() >= 0 && emergency.getX() < expectedGridSize.width,
         "X coordinate must be within [0, gridSize - 1]");
     assertTrue(
-        emergency.getY() >= 0 && emergency.getY() < gridSize,
+        emergency.getY() >= 0 && emergency.getY() < expectedGridSize.height,
         "Y coordinate must be within [0, gridSize - 1]");
 
     assertTrue(

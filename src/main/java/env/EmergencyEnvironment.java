@@ -1,60 +1,70 @@
 package env;
 
+import jason.asSyntax.Literal;
 import jason.asSyntax.Structure;
 import jason.environment.Environment;
+import java.awt.Dimension;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 import java.util.Random;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import model.ModelGenerator;
 import model.TestEmergency;
 import model.TestModel;
 
 public class EmergencyEnvironment extends Environment {
-  private static final int MIN_DELAY_MS = 3000;
-  private static final int MAX_DELAY_MS = 8000;
-  private static final int GRID_SIZE = 10;
+  private static final int SPEED = 300;
+  private static final int SPAWN_CHANCE_PERCENTAGE = 90;
+  private static final int MAX_EMERGENCIES = 20;
 
   private static final Logger logger = Logger.getLogger(EmergencyEnvironment.class.getName());
 
-  private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
   private final Random random = new Random();
   private final ModelGenerator modelGenerator = new ModelGenerator();
+  private Thread generatorThread;
   private TestModel testModel;
 
   @Override
   public void init(String[] args) {
     super.init(args);
+    Dimension size = new Dimension(10, 10);
 
-    testModel = modelGenerator.generateScenario(GRID_SIZE);
+    testModel = modelGenerator.generateScenario(size);
 
-    // TODO: Init model
+    // TODO: Init real model
     // TODO: Init view
 
-    scheduleNextEmergencyEvent();
+    generatorThread = new Thread(this::generateEmergencies, "emergency-generator");
+    generatorThread.setDaemon(true);
+    generatorThread.start();
     logger.info("EmergencyEnvironment initialized.");
   }
 
-  private void scheduleNextEmergencyEvent() {
-    long delayMs = MIN_DELAY_MS + random.nextInt(MAX_DELAY_MS - MIN_DELAY_MS);
+  @Override
+  public void stop() {
+    generatorThread.interrupt();
+    super.stop();
+  }
 
-    scheduler.schedule(
-        () -> {
-          try {
-            TestEmergency emergency = modelGenerator.generateEmergency(testModel).orElse(null);
-            if (emergency != null) {
-              logger.info("Generated emergency: " + emergency);
-              // TODO: Notify orchestrator about the new emergency
-            }
-          } catch (Exception e) {
-            logger.severe("Error during emergency event generation: " + e.getMessage());
-          } finally {
-            scheduleNextEmergencyEvent();
+  /** Simulation loop: at every step a new emergency may be added to the model. */
+  private void generateEmergencies() {
+    try {
+      while (!Thread.currentThread().isInterrupted()) {
+        Thread.sleep(SPEED);
+        if (random.nextInt(100) < SPAWN_CHANCE_PERCENTAGE
+            && testModel.getEmergencies().size() < MAX_EMERGENCIES) {
+          Optional<TestEmergency> emergency = modelGenerator.generateEmergency(testModel);
+          if (emergency.isPresent()) {
+            logger.info("Generated emergency: " + emergency);
+            testModel.addEmergency("foo"); // TODO: Replace with actual emergency object
+            informAgsEnvironmentChanged();
           }
-        },
-        delayMs,
-        TimeUnit.MILLISECONDS);
+        }
+      }
+    } catch (InterruptedException e) {
+    }
   }
 
   @Override
@@ -63,18 +73,24 @@ public class EmergencyEnvironment extends Environment {
 
     String actionName = action.getFunctor();
 
-    if (actionName.equals("foo")) {
-      logger.info("Action recognized and executed.");
-      return true;
+    if (actionName.equals("join")) {
+      return addAgent(agName, action.getTerm(0).toString());
     }
 
     logger.warning("Unknown or unhandled action: " + action);
     return false;
   }
 
+  /** Returns the current percepts for the specified agent. */
   @Override
-  public void stop() {
-    scheduler.shutdownNow();
-    super.stop();
+  public Collection<Literal> getPercepts(String agName) {
+    List<Literal> percepts = new ArrayList<>();
+    // TODO: Populate percepts based on the agent role and thecurrent state of the environment.
+    return percepts;
+  }
+
+  private boolean addAgent(String agentName, String role) {
+    // TODO: Implement agent addition logic to the model
+    return true;
   }
 }

@@ -1,5 +1,6 @@
 package model;
 
+import java.awt.Dimension;
 import java.util.Optional;
 import java.util.Random;
 
@@ -14,9 +15,9 @@ public class ModelGenerator {
    * @param gridSize the side length of the grid
    * @return a newly configured instance of TestModel
    */
-  public TestModel generateScenario(int gridSize) {
+  public TestModel generateScenario(Dimension size) {
     this.emergencyCounter = 0;
-    return new TestModel(gridSize);
+    return new TestModel(size);
   }
 
   /**
@@ -28,9 +29,9 @@ public class ModelGenerator {
    */
   public Optional<TestEmergency> generateEmergency(TestModel model) {
     // TODO: add check for non-occupied grid position
-    int gridSize = model.getGridSize();
-    int x = random.nextInt(gridSize);
-    int y = random.nextInt(gridSize);
+    Dimension size = model.getSize();
+    int x = random.nextInt(size.width);
+    int y = random.nextInt(size.height);
     int id = ++emergencyCounter;
     int severity = 1 + random.nextInt(5);
     return Optional.of(new TestEmergency(id, severity, x, y));

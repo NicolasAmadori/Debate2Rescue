@@ -1,13 +1,27 @@
 package model;
 
-public class TestModel {
-  private final int gridSize;
+import java.awt.Dimension;
+import java.util.ArrayList;
+import java.util.List;
 
-  public TestModel(int gridSize) {
-    this.gridSize = gridSize;
+/** Represents the test model for the emergency simulation. */
+public class TestModel {
+  private final Dimension size;
+  private final List<String> emergencies = new ArrayList<>();
+
+  public TestModel(Dimension size) {
+    this.size = size;
   }
 
-  public int getGridSize() {
-    return gridSize;
+  public Dimension getSize() {
+    return size;
+  }
+
+  public List<String> getEmergencies() {
+    return emergencies;
+  }
+
+  public void addEmergency(String emergency) {
+    emergencies.add(emergency);
   }
 }
