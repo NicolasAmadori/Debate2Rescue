@@ -1,6 +1,7 @@
 package view;
 
 import java.awt.BorderLayout;
+import java.util.function.IntConsumer;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
@@ -12,11 +13,13 @@ public class ViewImpl implements View {
 
   private final JFrame frame = new JFrame("Debate2Rescue");
   private final GridPanel grid;
+  private final SidePanel side = new SidePanel();
 
   public ViewImpl(int columns, int rows) {
     grid = new GridPanel(columns, rows);
     frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     frame.getContentPane().add(grid, BorderLayout.CENTER);
+    frame.getContentPane().add(side, BorderLayout.EAST);
     frame.pack();
   }
 
@@ -48,5 +51,15 @@ public class ViewImpl implements View {
   @Override
   public void removeDisaster(int id) {
     SwingUtilities.invokeLater(() -> grid.removeDisaster(id));
+  }
+
+  @Override
+  public void log(String message) {
+    SwingUtilities.invokeLater(() -> side.log(message));
+  }
+
+  @Override
+  public void setOnSpeedChange(IntConsumer onSpeedChange) {
+    SwingUtilities.invokeLater(() -> side.setOnSpeedChange(onSpeedChange));
   }
 }

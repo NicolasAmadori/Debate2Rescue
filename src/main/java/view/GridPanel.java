@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import javax.swing.JPanel;
 
-
 class GridPanel extends JPanel {
 
   private static final Color GRID_COLOR = Color.lightGray;

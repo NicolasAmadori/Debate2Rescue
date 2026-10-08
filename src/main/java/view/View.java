@@ -1,5 +1,7 @@
 package view;
 
+import java.util.function.IntConsumer;
+
 public interface View {
 
   /** Opens the window */
@@ -47,4 +49,18 @@ public interface View {
    * @param id the id of the disaster
    */
   void removeDisaster(int id);
+
+  /**
+   * Appends a message to the event log
+   *
+   * @param message the message to show
+   */
+  void log(String message);
+
+  /**
+   * Registers the action to run when the user moves the speed slider
+   *
+   * @param onSpeedChange receives the delay in ms between simulation steps
+   */
+  void setOnSpeedChange(IntConsumer onSpeedChange);
 }
