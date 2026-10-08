@@ -23,12 +23,12 @@ class SimModelTest {
     assertEquals(EmergencyStatus.WAITING, emergency.status());
     assertEquals(1, model.getEmergencies().size());
 
-    model.setStatus(emergency.id(), EmergencyStatus.IN_PROGRESS);
+    model.setEmergencyStatus(emergency.id(), EmergencyStatus.IN_PROGRESS);
     assertEquals(
         EmergencyStatus.IN_PROGRESS,
         model.getEmergencyAt(emergency.position()).orElseThrow().status());
 
-    assertTrue(model.resolve(emergency.id()).isPresent());
+    assertTrue(model.resolveEmergency(emergency.id()).isPresent());
     assertTrue(model.getEmergencies().isEmpty());
   }
 }
