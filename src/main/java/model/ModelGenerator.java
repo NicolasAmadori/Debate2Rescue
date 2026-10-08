@@ -9,15 +9,29 @@ public class ModelGenerator {
   private final Random random = new Random();
   private int emergencyCounter = 0;
 
+  public TestModel generateSmallScenario() {
+    return this.generateScenario(new Dimension(15, 15), 2, 4, 1);
+  }
+
+  public TestModel generateMediumScenario() {
+    return this.generateScenario(new Dimension(25, 25), 4, 8, 2);
+  }
+
+  public TestModel generateLargeScenario() {
+    return this.generateScenario(new Dimension(50, 50), 10, 15, 5);
+  }
+
   /**
    * Initializes and configures the scenario model for the simulation.
    *
-   * @param gridSize the side length of the grid
+   * @param size the dimensions of the grid
+   * @param nRescuers the number of rescuer agents to include in the model
+   * @param nPilots the number of pilot agents to include in the model
    * @return a newly configured instance of TestModel
    */
-  public TestModel generateScenario(Dimension size) {
+  public TestModel generateScenario(Dimension size, int nStations, int nRescuers, int nPilots) {
     this.emergencyCounter = 0;
-    return new TestModel(size);
+    return new TestModel(size, nStations, nRescuers, nPilots);
   }
 
   /**
