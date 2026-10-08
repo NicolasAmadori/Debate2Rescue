@@ -25,7 +25,7 @@ class SidePanel extends JPanel {
   SidePanel() {
     super(new BorderLayout(0, 8));
     setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-    setPreferredSize(new Dimension(320, 0));
+    setPreferredSize(new Dimension(320, 400));
 
     // moving the slider to the right speeds up the simulation
     speedSlider.setInverted(true);

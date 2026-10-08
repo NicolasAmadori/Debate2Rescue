@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
+import java.awt.Toolkit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -88,6 +89,9 @@ class GridPanel extends JPanel {
     }
 
     drawAgents(g, cellSize);
+
+    // Linux fix, the movements are not always painted causing skips
+    Toolkit.getDefaultToolkit().sync();
   }
 
   /** Several agents can share a cell, so each cell is split into slots. */
@@ -102,11 +106,12 @@ class GridPanel extends JPanel {
       List<Agent> inCell = cell.getValue();
       int slotsPerSide = (int) Math.ceil(Math.sqrt(inCell.size()));
       int slotSize = cellSize / slotsPerSide;
+      int gap = Math.max(1, slotSize / 8);
       for (int i = 0; i < inCell.size(); i++) {
         int slotX = p.x * cellSize + (i % slotsPerSide) * slotSize;
         int slotY = p.y * cellSize + (i / slotsPerSide) * slotSize;
         g.setColor(inCell.get(i).type().getColor());
-        g.fillRect(slotX + 3, slotY + 3, slotSize - 5, slotSize - 5);
+        g.fillRect(slotX + gap + 1, slotY + gap + 1, slotSize - 2 * gap, slotSize - 2 * gap);
       }
     }
   }
