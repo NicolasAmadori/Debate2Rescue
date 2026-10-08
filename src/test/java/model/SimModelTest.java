@@ -1,8 +1,8 @@
 package model;
 
-import static config.Config.STATION_FREQ;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import config.Config;
 import org.junit.jupiter.api.Test;
 
 class SimModelTest {
@@ -11,6 +11,6 @@ class SimModelTest {
 
   @Test
   void testInitialSetting() {
-    assertEquals(Math.round(10 * STATION_FREQ), model.getStations().count());
+    assertEquals(Math.round(10 * Config.STATION_FREQ), model.getStations().size());
   }
 }
