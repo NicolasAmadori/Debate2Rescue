@@ -6,6 +6,7 @@ MAS debate2rescue {
 
 	agents:
 		agent1 hello_agent;
+		rescuer;
 
 	aslSourcePath:
 		"src/main/agents";
