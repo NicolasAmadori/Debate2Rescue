@@ -1,7 +1,7 @@
 /* Rules */
 
 // a rescuer can take an emergency if it is free and we did not already give it one
-available(R) :- free(R) & not assigned(R, _).
+available(R) :- free[source(R)] & rescuer(R, _, _) & not assigned(R, _).
 
 // D is the Manhattan distance between rescuer R and the cell (X, Y)
 distance(R, X, Y, D) :- rescuer(R, RX, RY) & D = math.abs(RX - X) + math.abs(RY - Y).
@@ -16,7 +16,7 @@ distance(R, X, Y, D) :- rescuer(R, RX, RY) & D = math.abs(RX - X) + math.abs(RY 
 	.print("Emergency ", Id, " is over").
 
 // a rescuer is free again, give it a waiting emergency, if any
-+free(R) <-
++free[source(R)] <-
 	.abolish(assigned(R, _));
 	!assign_waiting.
 
@@ -26,7 +26,7 @@ distance(R, X, Y, D) :- rescuer(R, RX, RY) & D = math.abs(RX - X) + math.abs(RY 
 	.findall(d(D, R), available(R) & distance(R, X, Y, D), Candidates);
 	.min(Candidates, d(D, R));
 	+assigned(R, Id);
-	.abolish(free(R));
+	-free[source(R)];
 	.print("Emergency ", Id, " assigned to ", R, " (distance ", D, ")");
 	.send(R, achieve, handle(Id, X, Y)).
 
