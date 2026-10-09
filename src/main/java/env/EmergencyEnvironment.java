@@ -16,6 +16,8 @@ import java.util.logging.Logger;
 import model.ModelGenerator;
 import model.TestEmergency;
 import model.TestModel;
+import view.View;
+import view.ViewImpl;
 
 public class EmergencyEnvironment extends Environment {
   private static final int SIMULATION_SPEED = 300;
@@ -35,6 +37,7 @@ public class EmergencyEnvironment extends Environment {
 
   private Thread generatorThread;
   private TestModel testModel;
+  private View view;
 
   @Override
   public void init(String[] args) {
@@ -44,6 +47,12 @@ public class EmergencyEnvironment extends Environment {
 
     // TODO: Init real model
     // TODO: Init view
+    view = new ViewImpl(testModel);
+
+    // TODO: remove, just to see something on the grid
+    testModel.add(TestModel.STATION, 1, 1);
+    testModel.setAgPos(0, 3, 3);
+    testModel.setAgPos(1, 6, 2);
 
     // Spawning dynamic rescuers asynchronously
     new Thread(this::spawnInitialRescuers, "agent-spawner").start();
