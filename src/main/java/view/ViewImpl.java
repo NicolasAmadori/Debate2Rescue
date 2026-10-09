@@ -7,7 +7,7 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.util.function.IntConsumer;
 import javax.swing.SwingUtilities;
-import model.TestModel;
+import model.SimModel;
 
 public class ViewImpl extends GridWorldView implements View {
 
@@ -18,7 +18,7 @@ public class ViewImpl extends GridWorldView implements View {
   private SidePanel side;
 
   // TODO: change the parameter type to actual model
-  public ViewImpl(TestModel model) {
+  public ViewImpl(SimModel model) {
     super(model, "Debate2Rescue", GRID_SIZE_PX);
     setDefaultCloseOperation(EXIT_ON_CLOSE);
     setVisible(true);
@@ -43,11 +43,11 @@ public class ViewImpl extends GridWorldView implements View {
   @Override
   public void draw(Graphics g, int x, int y, int object) {
     switch (object) {
-      case TestModel.STATION -> {
+      case SimModel.STATION -> {
         g.setColor(STATION_COLOR);
         g.fillRect(x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);
       }
-      case TestModel.EMERGENCY -> {
+      case SimModel.EMERGENCY -> {
         g.setColor(EMERGENCY_COLOR);
         g.fillRect(x * cellSizeW + 1, y + cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);
       }

@@ -12,9 +12,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.logging.Logger;
-import model.ModelGenerator;
-import model.TestEmergency;
-import model.TestModel;
+import model.Emergency;
+import model.SimModel;
 import view.View;
 import view.ViewImpl;
 
@@ -39,26 +38,17 @@ public class EmergencyEnvironment extends Environment {
   private static final Logger logger = Logger.getLogger(EmergencyEnvironment.class.getName());
 
   private final Random random = new Random();
-  private final ModelGenerator modelGenerator = new ModelGenerator();
 
   private Thread generatorThread;
-  private TestModel testModel;
+  private SimModel model;
   private View view;
 
   @Override
   public void init(String[] args) {
     super.init(args);
 
-    testModel = modelGenerator.generateSmallScenario();
-
-    // TODO: Init real model
-    // TODO: Init view
-    view = new ViewImpl(testModel);
-
-    // TODO: remove, just to see something on the grid
-    testModel.add(TestModel.STATION, 1, 1);
-    testModel.setAgPos(0, 3, 3);
-    testModel.setAgPos(1, 6, 2);
+    model = new SimModel(20, 20, 7);
+    view = new ViewImpl(model);
 
     // Spawning dynamic rescuers asynchronously
     new Thread(this::spawnInitialAgents, "agent-spawner").start();
@@ -124,11 +114,10 @@ public class EmergencyEnvironment extends Environment {
       while (!Thread.currentThread().isInterrupted()) {
         Thread.sleep(SIMULATION_SPEED);
         if (random.nextInt(100) < SPAWN_CHANCE_PERCENTAGE
-            && testModel.getEmergencies().size() < MAX_EMERGENCIES) {
-          Optional<TestEmergency> emergency = modelGenerator.generateEmergency(testModel);
+            && model.getEmergencies().size() < MAX_EMERGENCIES) {
+          Optional<Emergency> emergency = model.spawnEmergency();
           if (emergency.isPresent()) {
             logger.info("Generated emergency: " + emergency);
-            testModel.addEmergency("foo"); // TODO: Replace with actual emergency object
             informAgsEnvironmentChanged();
           }
         }
