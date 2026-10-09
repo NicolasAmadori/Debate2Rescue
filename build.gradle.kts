@@ -48,7 +48,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("jason.infra.centralised.RunCentralisedMAS")
+    mainClass.set("jason.infra.local.RunLocalMAS")
 }
 
 tasks.named<JavaExec>("run") {
