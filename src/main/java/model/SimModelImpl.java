@@ -77,6 +77,7 @@ public class SimModelImpl extends GridWorldModel implements SimModel {
     }
     Emergency updated = emergency.newStatus(newStatus);
     emergencies.put(emergencyId, updated);
+    updateCell(updated.position());
     return Optional.of(updated);
   }
 
@@ -101,6 +102,7 @@ public class SimModelImpl extends GridWorldModel implements SimModel {
     Location station = stations.get((int) (sameRole % stations.size()));
     Responder responder = new Responder(name, role, station, station);
     responders.put(name, responder);
+    updateCell(station);
     return responder;
   }
 
@@ -127,10 +129,29 @@ public class SimModelImpl extends GridWorldModel implements SimModel {
     }
     Location to = new Location(x, y);
     responders.put(name, responder.moveTo(to));
+    updateCell(from);
+    updateCell(to);
     return true;
   }
 
   public synchronized Optional<Responder> getResponder(String name) {
     return Optional.ofNullable(responders.get(name));
+  }
+
+  public synchronized List<Responder> getRespondersAt(Location position) {
+    return responders.values().stream().filter(r -> r.position().equals(position)).toList();
+  }
+
+  /***
+   * Private method to safely update cell state in case of multiple agents.
+   * @param cell to update
+   */
+  private void updateCell(Location cell) {
+    if (getRespondersAt(cell).isEmpty()) {
+      data[cell.x][cell.y] &= ~AGENT; // remove agent bit
+    } else {
+      data[cell.x][cell.y] |= AGENT; // add agent bit, if not already present
+    }
+    // TODO: update view
   }
 }
