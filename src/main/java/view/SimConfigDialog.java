@@ -10,7 +10,7 @@ import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 
 /** Asks the grid size before the simulation starts */
-public final class GridSizeDialog {
+public final class SimConfigDialog {
 
   // Grid values
   private static final int MIN_SIZE = 5;
@@ -29,7 +29,7 @@ public final class GridSizeDialog {
   private static final int PILOTS_MAX = 50;
   private static final int DEFAULT_PILOTS = 20;
 
-  private GridSizeDialog() {}
+  private SimConfigDialog() {}
 
   /**
    * Shows the dialog and waits for the user
@@ -60,7 +60,11 @@ public final class GridSizeDialog {
 
     int choice =
         JOptionPane.showConfirmDialog(
-            null, panel, "Grid size", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+            null,
+            panel,
+            "Simulation configuration",
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.PLAIN_MESSAGE);
     if (choice != JOptionPane.OK_OPTION) {
       return Optional.empty();
     }
