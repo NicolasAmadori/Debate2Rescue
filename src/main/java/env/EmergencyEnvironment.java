@@ -1,11 +1,11 @@
 package env;
 
+import config.ConfigValues;
 import jason.asSyntax.Literal;
 import jason.asSyntax.Structure;
 import jason.environment.Environment;
 import jason.runtime.RuntimeServices;
 import jason.runtime.RuntimeServicesFactory;
-import java.awt.Dimension;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,7 +16,7 @@ import java.util.logging.Logger;
 import model.Responder;
 import model.ResponderRole;
 import model.SimModel;
-import view.GridSizeDialog;
+import view.SimConfigDialog;
 import view.View;
 import view.ViewImpl;
 
@@ -50,9 +50,9 @@ public class EmergencyEnvironment extends Environment {
   @Override
   public void init(String[] args) {
     super.init(args);
-    Dimension gridSize = getGridSize(args);
+    ConfigValues config = getConfigValues(args);
 
-    model = new SimModel(gridSize.width, gridSize.height, 7);
+    model = new SimModel(config.gridWidth(), config.gridHeight(), config.stationsCount());
     view = new ViewImpl(model);
     view.setOnSpeedChange(speed -> simulationSpeed = speed);
 
@@ -67,18 +67,24 @@ public class EmergencyEnvironment extends Environment {
     log("EmergencyEnvironment initialized.");
   }
 
-  private Dimension getGridSize(String[] args) {
-    Dimension size;
-    if (args.length == 2) {
-      size = new Dimension(Integer.parseInt(args[0]), Integer.parseInt(args[1]));
+  private ConfigValues getConfigValues(String[] args) {
+    ConfigValues configValues;
+    if (args.length == 5) {
+      configValues =
+          new ConfigValues(
+              Integer.parseInt(args[0]),
+              Integer.parseInt(args[1]),
+              Integer.parseInt(args[2]),
+              Integer.parseInt(args[3]),
+              Integer.parseInt(args[4]));
     } else {
-      Optional<Dimension> chosen = GridSizeDialog.ask();
+      Optional<ConfigValues> chosen = SimConfigDialog.ask();
       if (chosen.isEmpty()) {
         System.exit(0);
       }
-      size = chosen.get();
+      configValues = chosen.get();
     }
-    return size;
+    return configValues;
   }
 
   /** Spawns the initial configured batch of dynamic rescuers and pilots. */
