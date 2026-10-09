@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 class SimModelTest {
 
-  private SimModel model = new SimModelImpl(20, 20);
+  private SimModelImpl model = new SimModelImpl(20, 20);
 
   @Test
   void testInitialSetting() {
@@ -75,5 +75,28 @@ class SimModelTest {
         distPilot - 2,
         Config.getManhattanDistance(model.getResponder("pilot1").orElseThrow().position(), target),
         "Pilot should move two cells");
+  }
+
+  @Test
+  void testCellUpdating() {
+    model.addResponder("rescuer1", ResponderRole.RESCUER);
+    model.addResponder("pilot1", ResponderRole.PILOT);
+    Location station = model.getStations().get(0);
+    Location target = model.getFreePosition().orElseThrow();
+
+    assertTrue(model.hasObject(SimModelImpl.STATION, station));
+    assertTrue(
+        model.hasObject(SimModelImpl.AGENT, station),
+        "Station cell should have agent bit there are agents");
+
+    model.moveTowards("rescuer1", target);
+    assertTrue(
+        model.hasObject(SimModelImpl.AGENT, station),
+        "Station cell should keep agent bit since not all agents are gone");
+
+    model.moveTowards("pilot1", target);
+    assertFalse(
+        model.hasObject(SimModelImpl.AGENT, station),
+        "Station cell should not have agent bit since all agents are gone");
   }
 }

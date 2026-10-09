@@ -23,7 +23,7 @@ public class SimModelImpl extends GridWorldModel implements SimModel {
 
   private int nextEmergencyId = 1;
 
-  protected SimModelImpl(int w, int h) {
+  public SimModelImpl(int w, int h) {
     super(w, h, 0);
     stations = new ArrayList<>();
     for (int i = 0; i < Config.getNumStations(w, h); i++) {
