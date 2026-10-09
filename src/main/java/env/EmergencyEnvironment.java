@@ -11,7 +11,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import model.ModelGenerator;
 import model.TestEmergency;
@@ -20,20 +19,27 @@ import view.View;
 import view.ViewImpl;
 
 public class EmergencyEnvironment extends Environment {
+  // Simulation settings
   private static final int SIMULATION_SPEED = 300;
-  private static final int SPAWN_CHANCE_PERCENTAGE = 90;
-  private static final int MAX_EMERGENCIES = 20;
-  private static final int N_RESCUER = 4;
 
-  // Agent roles
+  // Rescuer agent
+  private static final int N_RESCUER = 4;
   private static final String RESCUER = "rescuer";
   private static final String RESCUER_ASL_PATH = "src/main/agents/rescuer.asl";
+
+  // Pilot agent
+  private static final int N_PILOT = 4;
+  private static final String PILOT = "pilot";
+  private static final String PILOT_ASL_PATH = "src/main/agents/pilot.asl";
+
+  // Emergency generation
+  private static final int SPAWN_CHANCE_PERCENTAGE = 90;
+  private static final int MAX_EMERGENCIES = 20;
 
   private static final Logger logger = Logger.getLogger(EmergencyEnvironment.class.getName());
 
   private final Random random = new Random();
   private final ModelGenerator modelGenerator = new ModelGenerator();
-  private final AtomicInteger rescuerIdCounter = new AtomicInteger(1);
 
   private Thread generatorThread;
   private TestModel testModel;
@@ -55,7 +61,7 @@ public class EmergencyEnvironment extends Environment {
     testModel.setAgPos(1, 6, 2);
 
     // Spawning dynamic rescuers asynchronously
-    new Thread(this::spawnInitialRescuers, "agent-spawner").start();
+    new Thread(this::spawnInitialAgents, "agent-spawner").start();
 
     generatorThread = new Thread(this::generateEmergencies, "emergency-generator");
     generatorThread.setDaemon(true);
@@ -64,41 +70,44 @@ public class EmergencyEnvironment extends Environment {
     logger.info("EmergencyEnvironment initialized.");
   }
 
-  /** Spawns the initial configured batch of dynamic rescuers. */
-  private void spawnInitialRescuers() {
+  /** Spawns the initial configured batch of dynamic rescuers and pilots. */
+  private void spawnInitialAgents() {
     try {
       // Wait for the MAS environment to complete initialization
       Thread.sleep(150);
-
-      for (int i = 0; i < N_RESCUER; i++) {
-        spawnRescuer();
-      }
+      spawnAgents(RESCUER, RESCUER_ASL_PATH, N_RESCUER);
+      spawnAgents(PILOT, PILOT_ASL_PATH, N_PILOT);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.warning("Rescuer spawning thread was interrupted.");
+      logger.warning("Agent spawning thread was interrupted.");
     }
   }
 
   /**
-   * Dynamically creates and registers a new rescuer agent with a unique name. Can be called
-   * whenever an emergency requires extra units.
+   * Dynamically creates and registers a batch of new agents with unique names.
    *
-   * @return The unique name of the spawned rescuer, or null on failure.
+   * @param role The role identifier (e.g., RESCUER or PILOT)
+   * @param aslPath Path to the ASL source file
+   * @param count Number of agents to spawn
+   * @return The list of created agent names
    */
-  public synchronized String spawnRescuer() {
-    String agName = String.format("%s_%d", RESCUER, rescuerIdCounter.getAndIncrement());
-    try {
-      RuntimeServices services = RuntimeServicesFactory.get();
+  public synchronized List<String> spawnAgents(String role, String aslPath, int count) {
+    List<String> spawned = new ArrayList<>();
+    RuntimeServices services = RuntimeServicesFactory.get();
 
-      String createdAgName =
-          services.createAgent(agName, RESCUER_ASL_PATH, null, null, null, null, null);
-      services.startAgent(createdAgName);
-
-      return createdAgName;
-    } catch (Exception e) {
-      logger.severe("Failed to spawn dynamic agent " + agName + ": " + e.getMessage());
-      return null;
+    for (int i = 0; i < count; i++) {
+      String agName = String.format("%s_%d", role, i + 1);
+      try {
+        String createdAgName = services.createAgent(agName, aslPath, null, null, null, null, null);
+        services.startAgent(createdAgName);
+        spawned.add(createdAgName);
+      } catch (Exception e) {
+        logger.severe(
+            "Failed to spawn dynamic agent " + agName + " (" + role + "): " + e.getMessage());
+      }
     }
+
+    return spawned;
   }
 
   @Override
