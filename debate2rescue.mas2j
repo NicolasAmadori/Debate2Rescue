@@ -2,8 +2,11 @@ MAS debate2rescue {
 
 	infrastructure: Centralised
 
+	environment: env.EmergencyEnvironment
+
 	agents:
 		agent1 hello_agent;
+		rescuer;
 
 	aslSourcePath:
 		"src/main/agents";
