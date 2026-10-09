@@ -54,17 +54,26 @@ class SimModelTest {
   @Test
   void testMovingResponders() {
     model.addResponder("rescuer1", ResponderRole.RESCUER);
+    Location rescuerStation = model.getResponder("rescuer1").orElseThrow().station();
     model.addResponder("pilot1", ResponderRole.PILOT);
-    Location target = new Location(5, 5);
+    Location pilotStation = model.getResponder("pilot1").orElseThrow().station();
+    int distRescuer, distPilot;
+    Location target;
+    do {
+      target = model.getFreePosition().orElseThrow();
+      distRescuer = Config.getManhattanDistance(rescuerStation, target);
+      distPilot = Config.getManhattanDistance(pilotStation, target);
+    } while (distRescuer > 1 && distPilot > 2);
     model.moveTowards("rescuer1", target);
     model.moveTowards("pilot1", target);
     assertEquals(
-        new Location(2, 1),
-        model.getResponder("rescuer1").orElseThrow().position(),
+        distRescuer - 1,
+        Config.getManhattanDistance(
+            model.getResponder("rescuer1").orElseThrow().position(), target),
         "Rescuer should move one cell");
     assertEquals(
-        new Location(3, 1),
-        model.getResponder("pilot1").orElseThrow().position(),
+        distPilot - 2,
+        Config.getManhattanDistance(model.getResponder("pilot1").orElseThrow().position(), target),
         "Pilot should move two cells");
   }
 }

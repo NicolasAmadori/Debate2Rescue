@@ -19,6 +19,12 @@ public interface SimModel {
   List<Emergency> getEmergencies();
 
   /***
+   * Getter method
+   * @return a free grid position if present, or empty if there are no free cells left.
+   */
+  Optional<Location> getFreePosition();
+
+  /***
    * Creates an emergency with random properties in a cell without stations and emergencies.
    *
    * @return the new emergency, or empty if there are no free cells left.
@@ -57,4 +63,19 @@ public interface SimModel {
    * @return the new responder
    */
   Responder addResponder(String name, ResponderRole role);
+
+  /***
+   * Moves a responder towards the target, first along x and then along y (manhattan path).
+   * Rescuers move by one cell, pilots fly by two.
+   *
+   * @return false if the responder is not found, true otherwise
+   */
+  boolean moveTowards(String name, Location target);
+
+  /***
+   * Getter method.
+   * @param name the name of the responder
+   * @return the responder with the given name, or empty if not found.
+   */
+  Optional<Responder> getResponder(String name);
 }

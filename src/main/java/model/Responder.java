@@ -10,4 +10,9 @@ import jason.environment.grid.Location;
  * @param station the station where the responder starts and goes back to
  * @param position the current cell of the responder
  */
-public record Responder(String name, ResponderRole role, Location station, Location position) {}
+public record Responder(String name, ResponderRole role, Location station, Location position) {
+
+  public Responder moveTo(Location newPosition) {
+    return new Responder(name, role, station, newPosition);
+  }
+}

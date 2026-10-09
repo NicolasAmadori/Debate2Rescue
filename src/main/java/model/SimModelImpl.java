@@ -44,6 +44,12 @@ public class SimModelImpl extends GridWorldModel implements SimModel {
   }
 
   @Override
+  public synchronized Optional<Location> getFreePosition() {
+    Location pos = getFreePos(STATION | EMERGENCY | AGENT);
+    return Optional.ofNullable(pos);
+  }
+
+  @Override
   public synchronized Optional<Emergency> spawnEmergency() {
     Location pos = getFreePos(STATION | EMERGENCY);
     if (pos == null) {
@@ -96,5 +102,35 @@ public class SimModelImpl extends GridWorldModel implements SimModel {
     Responder responder = new Responder(name, role, station, station);
     responders.put(name, responder);
     return responder;
+  }
+
+  @Override
+  public synchronized boolean moveTowards(String name, Location target) {
+    Responder responder = responders.get(name);
+    if (responder == null) {
+      return false;
+    }
+    Location from = responder.position();
+    int x = from.x;
+    int y = from.y;
+    int cells = responder.role() == ResponderRole.PILOT ? 2 : 1;
+    for (int i = 0; i < cells; i++) {
+      if (x < target.x) {
+        x++;
+      } else if (x > target.x) {
+        x--;
+      } else if (y < target.y) {
+        y++;
+      } else if (y > target.y) {
+        y--;
+      }
+    }
+    Location to = new Location(x, y);
+    responders.put(name, responder.moveTo(to));
+    return true;
+  }
+
+  public synchronized Optional<Responder> getResponder(String name) {
+    return Optional.ofNullable(responders.get(name));
   }
 }
