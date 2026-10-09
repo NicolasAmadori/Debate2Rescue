@@ -49,7 +49,7 @@ public class ViewImpl extends GridWorldView implements View {
       }
       case SimModel.EMERGENCY -> {
         g.setColor(EMERGENCY_COLOR);
-        g.fillRect(x * cellSizeW + 1, y + cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);
+        g.fillRect(x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);
       }
       default -> {}
     }
