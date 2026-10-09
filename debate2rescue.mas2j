@@ -5,8 +5,7 @@ MAS debate2rescue {
 	environment: env.EmergencyEnvironment
 
 	agents:
-		agent1 hello_agent;
-		rescuer;
+		orchestrator;
 
 	aslSourcePath:
 		"src/main/agents";
