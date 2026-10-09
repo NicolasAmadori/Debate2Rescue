@@ -48,4 +48,13 @@ public interface SimModel {
    * @return the removed emergency, or empty if it does not exist.
    */
   Optional<Emergency> resolveEmergency(int emergencyId);
+
+  /***
+   * Places a new responder on a station. Responders with the same role are spread over the stations.
+   *
+   * @param name the name of the responder
+   * @param role rescuer or pilot
+   * @return the new responder
+   */
+  Responder addResponder(String name, ResponderRole role);
 }

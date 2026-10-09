@@ -3,6 +3,7 @@ package model;
 import config.Config;
 import jason.environment.grid.GridWorldModel;
 import jason.environment.grid.Location;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,13 +17,15 @@ public class SimModelImpl extends GridWorldModel implements SimModel {
 
   private final List<Location> stations;
   private final Map<Integer, Emergency> emergencies = new LinkedHashMap<>();
+  private final Map<String, Responder> responders = new LinkedHashMap<>();
   private final EmergencyType[] emergencyTypes = EmergencyType.values();
   private final Severity[] severities = Severity.values();
+
   private int nextEmergencyId = 1;
 
   protected SimModelImpl(int w, int h) {
     super(w, h, 0);
-    stations = List.of();
+    stations = new ArrayList<>();
     int numS = (int) Math.round(((w + h) / 2) * Config.STATION_FREQ);
     for (int i = 0; i < numS; i++) {
       Location pos = getFreePos(STATION);
@@ -85,5 +88,14 @@ public class SimModelImpl extends GridWorldModel implements SimModel {
     }
     remove(EMERGENCY, emergency.position());
     return Optional.of(emergency);
+  }
+
+  @Override
+  public synchronized Responder addResponder(String name, ResponderRole role) {
+    long sameRole = responders.values().stream().filter(r -> r.role() == role).count();
+    Location station = stations.get((int) (sameRole % stations.size()));
+    Responder responder = new Responder(name, role, station, station);
+    responders.put(name, responder);
+    return responder;
   }
 }

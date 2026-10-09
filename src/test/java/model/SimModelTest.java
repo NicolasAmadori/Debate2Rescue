@@ -4,25 +4,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import config.Config;
-import javax.management.relation.Role;
 import org.junit.jupiter.api.Test;
 
 class SimModelTest {
 
-  private SimModel model = new SimModelImpl(10, 10);
+  private SimModel model = new SimModelImpl(20, 20);
 
   @Test
   void testInitialSetting() {
-    assertEquals(Math.round(10 * Config.STATION_FREQ), model.getStations().size());
+    assertEquals(2, model.getStations().size());
   }
 
   @Test
   void testAddResponders() {
-    Responder rescuer1 = model.addResponder("rescuer1", Role.RESCUER);
-    Responder rescuer2 = model.addResponder("rescuer2", Role.RESCUER);
-    Responder pilot1 = model.addResponder("pilot1", Role.PILOT);
-    Responder pilot2 = model.addResponder("pilot2", Role.PILOT);
+    Responder rescuer1 = model.addResponder("rescuer1", ResponderRole.RESCUER);
+    Responder rescuer2 = model.addResponder("rescuer2", ResponderRole.RESCUER);
+    Responder pilot1 = model.addResponder("pilot1", ResponderRole.PILOT);
+    Responder pilot2 = model.addResponder("pilot2", ResponderRole.PILOT);
     assertEquals(model.getStations().get(0), rescuer1.station());
     assertEquals(
         model.getStations().get(1),
