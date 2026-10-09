@@ -6,8 +6,11 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.util.List;
 import java.util.function.IntConsumer;
 import javax.swing.SwingUtilities;
+import model.Responder;
+import model.ResponderRole;
 import model.SimModel;
 
 public class ViewImpl extends GridWorldView implements View {
@@ -62,19 +65,32 @@ public class ViewImpl extends GridWorldView implements View {
 
   @Override
   public void drawAgent(Graphics g, int x, int y, Color c, int id) {
-    // with more responders in the same cell the first one decides the color
-    // TODO: handle multiple agents in the cell
-    Color color =
-        model().getRespondersAt(new Location(x, y)).stream()
-            .findFirst()
-            .map(
-                r ->
-                    switch (r.role()) {
-                      case RESCUER -> AgentType.RESCUER.getColor();
-                      case PILOT -> AgentType.PILOT.getColor();
-                    })
-            .orElse(c);
-    super.drawAgent(g, x, y, color, id);
+    if (g == null) {
+      return;
+    }
+    int top = y * cellSizeH;
+    int height = cellSizeH;
+    if (model.hasObject(SimModel.EMERGENCY, x, y)) {
+      top += cellSizeH / 2;
+      height = cellSizeH / 2;
+    }
+    List<Responder> here = model().getRespondersAt(new Location(x, y));
+    int slotsPerSide = (int) Math.ceil(Math.sqrt(here.size()));
+    int slotW = cellSizeW / Math.max(1, slotsPerSide);
+    int slotH = height / Math.max(1, slotsPerSide);
+    int gap = Math.max(1, Math.min(slotW, slotH) / 6);
+    for (int i = 0; i < here.size(); i++) {
+      int slotX = x * cellSizeW + (i % slotsPerSide) * slotW;
+      int slotY = top + (i / slotsPerSide) * slotH;
+      g.setColor(colorOf(here.get(i).role()));
+      // the circle is centered on the shorter side of the container
+      int diameter = Math.min(slotW, slotH) - 2 * gap;
+      g.fillOval(
+          slotX + (slotW - diameter) / 2 + 1,
+          slotY + (slotH - diameter) / 2 + 1,
+          diameter,
+          diameter);
+    }
   }
 
   @Override
@@ -99,6 +115,13 @@ public class ViewImpl extends GridWorldView implements View {
     }
     cell.drawRect(0, 0, width - 1, height - 1);
     cell.dispose();
+  }
+
+  private static Color colorOf(ResponderRole role) {
+    return switch (role) {
+      case RESCUER -> AgentType.RESCUER.getColor();
+      case PILOT -> AgentType.PILOT.getColor();
+    };
   }
 
   private SimModel model() {
