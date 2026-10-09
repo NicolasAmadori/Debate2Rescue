@@ -1,11 +1,14 @@
 package model;
 
+import jason.environment.grid.GridWorldModel;
 import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.List;
 
 /** Represents the test model for the emergency simulation. */
-public class TestModel {
+public class TestModel extends GridWorldModel {
+  public static final int STATION = 8;
+  public static final int EMERGENCY = 16;
   private final Dimension size;
   private final int nStations;
   private final int nRescuers;
@@ -13,6 +16,7 @@ public class TestModel {
   private final List<String> emergencies = new ArrayList<>();
 
   public TestModel(Dimension size, int nStations, int nRescuers, int nPilots) {
+    super(size.width, size.height, nRescuers + nPilots);
     this.size = size;
     this.nStations = nStations;
     this.nRescuers = nRescuers;

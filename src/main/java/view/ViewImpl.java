@@ -1,56 +1,64 @@
 package view;
 
+import jason.environment.grid.GridWorldView;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
 import java.util.function.IntConsumer;
-import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
+import model.TestModel;
 
-/**
- * Swing implementation of the view. The controller can call its methods from any thread: every
- * change is passed to the Swing thread.
- */
-public class ViewImpl implements View {
+public class ViewImpl extends GridWorldView implements View {
 
-  private final JFrame frame = new JFrame("Debate2Rescue");
-  private final GridPanel grid;
-  private final SidePanel side = new SidePanel();
+  private static final Color STATION_COLOR = Color.DARK_GRAY;
+  private static final Color EMERGENCY_COLOR = Color.RED;
+  private static final int GRID_SIZE_PX = 600;
 
-  public ViewImpl(int columns, int rows) {
-    grid = new GridPanel(columns, rows);
-    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    frame.getContentPane().add(grid, BorderLayout.CENTER);
-    frame.getContentPane().add(side, BorderLayout.EAST);
-    frame.pack();
+  private SidePanel side;
+
+  // TODO: change the parameter type to actual model
+  public ViewImpl(TestModel model) {
+    super(model, "Debate2Rescue", GRID_SIZE_PX);
+    setDefaultCloseOperation(EXIT_ON_CLOSE);
+    setVisible(true);
   }
 
   @Override
-  public void show() {
-    SwingUtilities.invokeLater(() -> frame.setVisible(true));
+  public void initComponents(int width) {
+    super.initComponents(width);
+
+    getCanvas().setBackground(Color.WHITE);
+    getCanvas().setPreferredSize(new Dimension(width, width));
+    this.side = new SidePanel();
+    getContentPane().add(side, BorderLayout.EAST);
+    pack();
   }
 
   @Override
-  public void addStation(int x, int y) {
-    SwingUtilities.invokeLater(() -> grid.addStation(x, y));
+  public void update() {
+    repaint();
   }
 
   @Override
-  public void addAgent(String name, AgentType type, int x, int y) {
-    SwingUtilities.invokeLater(() -> grid.addAgent(name, type, x, y));
+  public void draw(Graphics g, int x, int y, int object) {
+    switch (object) {
+      case TestModel.STATION -> {
+        g.setColor(STATION_COLOR);
+        g.fillRect(x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);
+      }
+      case TestModel.EMERGENCY -> {
+        g.setColor(EMERGENCY_COLOR);
+        g.fillRect(x * cellSizeW + 1, y + cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);
+      }
+      default -> {}
+    }
   }
 
   @Override
-  public void moveAgent(String name, int x, int y) {
-    SwingUtilities.invokeLater(() -> grid.moveAgent(name, x, y));
-  }
-
-  @Override
-  public void addDisaster(int id, int x, int y) {
-    SwingUtilities.invokeLater(() -> grid.addDisaster(id, x, y));
-  }
-
-  @Override
-  public void removeDisaster(int id) {
-    SwingUtilities.invokeLater(() -> grid.removeDisaster(id));
+  public void drawAgent(Graphics g, int x, int y, Color c, int id) {
+    // TODO: pick the color based on the agent type once the actual model is ready
+    super.drawAgent(g, x, y, AgentType.RESCUER.getColor(), id);
   }
 
   @Override
