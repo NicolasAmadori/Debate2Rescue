@@ -1,5 +1,6 @@
 package env;
 
+import config.ConfigValues;
 import jason.asSyntax.ASSyntax;
 import jason.asSyntax.Literal;
 import jason.asSyntax.NumberTerm;
@@ -9,7 +10,6 @@ import jason.environment.Environment;
 import jason.environment.grid.Location;
 import jason.runtime.RuntimeServices;
 import jason.runtime.RuntimeServicesFactory;
-import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -20,22 +20,16 @@ import model.Emergency;
 import model.Responder;
 import model.ResponderRole;
 import model.SimModel;
-import view.GridSizeDialog;
+import view.SimConfigDialog;
 import view.View;
 import view.ViewImpl;
 
 public class EmergencyEnvironment extends Environment {
   private static final Logger LOGGER = Logger.getLogger(EmergencyEnvironment.class.getName());
 
-  // Orchestrator agent
+  // Agent roles
   private static final String ORCHESTRATOR = "orchestrator";
-
-  // Rescuer agent
-  private static final int N_RESCUER = 4;
   private static final String RESCUER = "rescuer";
-
-  // Pilot agent
-  private static final int N_PILOT = 4;
   private static final String PILOT = "pilot";
 
   // Emergency generation
@@ -45,9 +39,10 @@ public class EmergencyEnvironment extends Environment {
 
   private SimModel model;
   private View view;
+  private ConfigValues config;
   private final Random random = new Random();
   private Thread generatorThread;
-  private int simulationSpeed = 300; // Managed by the view
+  private int simulationSpeed = 300; // Managed from the view
 
   public EmergencyEnvironment() {
     // Increased the number of action threads for better concurrency handling
@@ -57,9 +52,9 @@ public class EmergencyEnvironment extends Environment {
   @Override
   public void init(String[] args) {
     super.init(args);
-    Dimension gridSize = getGridSize(args);
+    config = getConfigValues(args);
 
-    model = new SimModel(gridSize.width, gridSize.height, 7);
+    model = new SimModel(config.gridWidth(), config.gridHeight(), config.stationsCount());
     view = new ViewImpl(model);
     view.setOnSpeedChange(speed -> simulationSpeed = speed);
 
@@ -82,13 +77,33 @@ public class EmergencyEnvironment extends Environment {
     super.stop();
   }
 
+  private ConfigValues getConfigValues(String[] args) {
+    ConfigValues configValues;
+    if (args.length == 5) {
+      configValues =
+          new ConfigValues(
+              Integer.parseInt(args[0]),
+              Integer.parseInt(args[1]),
+              Integer.parseInt(args[2]),
+              Integer.parseInt(args[3]),
+              Integer.parseInt(args[4]));
+    } else {
+      Optional<ConfigValues> chosen = SimConfigDialog.ask();
+      if (chosen.isEmpty()) {
+        System.exit(0);
+      }
+      configValues = chosen.get();
+    }
+    return configValues;
+  }
+
   /** Spawns the initial configured batch of dynamic rescuers and pilots. */
   private void spawnInitialAgents() {
     try {
       // Wait for the MAS environment to complete initialization
       Thread.sleep(150);
-      spawnAgents(PILOT, N_PILOT);
-      spawnAgents(RESCUER, N_RESCUER);
+      spawnAgents(PILOT, config.pilotsCount());
+      spawnAgents(RESCUER, config.rescuersCount());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warning("Agent spawning thread was interrupted.");
@@ -257,17 +272,6 @@ public class EmergencyEnvironment extends Environment {
 
   private static int intArg(Structure action, int index) throws Exception {
     return (int) ((NumberTerm) action.getTerm(index)).solve();
-  }
-
-  private Dimension getGridSize(String[] args) {
-    if (args.length == 2) {
-      return new Dimension(Integer.parseInt(args[0]), Integer.parseInt(args[1]));
-    }
-    Optional<Dimension> chosen = GridSizeDialog.ask();
-    if (chosen.isEmpty()) {
-      System.exit(0);
-    }
-    return chosen.get();
   }
 
   /**
