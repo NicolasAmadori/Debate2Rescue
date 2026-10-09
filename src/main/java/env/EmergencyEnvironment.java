@@ -6,7 +6,6 @@ import jason.asSyntax.Structure;
 import jason.environment.Environment;
 import jason.runtime.RuntimeServices;
 import jason.runtime.RuntimeServicesFactory;
-import java.awt.Dimension;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collection;
