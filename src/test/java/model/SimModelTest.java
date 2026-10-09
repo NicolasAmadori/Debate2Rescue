@@ -63,7 +63,7 @@ class SimModelTest {
       target = model.getFreePosition().orElseThrow();
       distRescuer = Config.getManhattanDistance(rescuerStation, target);
       distPilot = Config.getManhattanDistance(pilotStation, target);
-    } while (distRescuer > 1 && distPilot > 2);
+    } while (distRescuer < 1 && distPilot < 2);
     model.moveTowards("rescuer1", target);
     model.moveTowards("pilot1", target);
     assertEquals(
