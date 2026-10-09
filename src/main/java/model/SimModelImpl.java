@@ -26,8 +26,7 @@ public class SimModelImpl extends GridWorldModel implements SimModel {
   protected SimModelImpl(int w, int h) {
     super(w, h, 0);
     stations = new ArrayList<>();
-    int numS = (int) Math.round(((w + h) / 2) * Config.STATION_FREQ);
-    for (int i = 0; i < numS; i++) {
+    for (int i = 0; i < Config.getNumStations(w, h); i++) {
       Location pos = getFreePos(STATION);
       stations.add(pos);
       add(STATION, pos);
