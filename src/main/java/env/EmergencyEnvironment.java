@@ -1,18 +1,22 @@
 package env;
 
 import config.ConfigValues;
+import jason.asSyntax.ASSyntax;
 import jason.asSyntax.Literal;
+import jason.asSyntax.NumberTerm;
 import jason.asSyntax.Structure;
+import jason.asSyntax.Term;
 import jason.environment.Environment;
+import jason.environment.grid.Location;
 import jason.runtime.RuntimeServices;
 import jason.runtime.RuntimeServicesFactory;
-import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.logging.Logger;
+import model.Emergency;
 import model.Responder;
 import model.ResponderRole;
 import model.SimModel;
@@ -23,12 +27,9 @@ import view.ViewImpl;
 public class EmergencyEnvironment extends Environment {
   private static final Logger LOGGER = Logger.getLogger(EmergencyEnvironment.class.getName());
 
-  // Rescuer agent
-  private static final int N_RESCUER = 4;
+  // Agent roles
+  private static final String ORCHESTRATOR = "orchestrator";
   private static final String RESCUER = "rescuer";
-
-  // Pilot agent
-  private static final int N_PILOT = 4;
   private static final String PILOT = "pilot";
 
   // Emergency generation
@@ -38,9 +39,10 @@ public class EmergencyEnvironment extends Environment {
 
   private SimModel model;
   private View view;
+  private ConfigValues config;
   private final Random random = new Random();
   private Thread generatorThread;
-  private int simulationSpeed = 300; // Managed by the view
+  private int simulationSpeed = 300; // Managed from the view
 
   public EmergencyEnvironment() {
     // Increased the number of action threads for better concurrency handling
@@ -50,7 +52,7 @@ public class EmergencyEnvironment extends Environment {
   @Override
   public void init(String[] args) {
     super.init(args);
-    ConfigValues config = getConfigValues(args);
+    config = getConfigValues(args);
 
     model = new SimModel(config.gridWidth(), config.gridHeight(), config.stationsCount());
     view = new ViewImpl(model);
@@ -65,6 +67,14 @@ public class EmergencyEnvironment extends Environment {
     generatorThread.start();
 
     log("EmergencyEnvironment initialized.");
+  }
+
+  @Override
+  public void stop() {
+    if (generatorThread != null) {
+      generatorThread.interrupt();
+    }
+    super.stop();
   }
 
   private ConfigValues getConfigValues(String[] args) {
@@ -92,8 +102,8 @@ public class EmergencyEnvironment extends Environment {
     try {
       // Wait for the MAS environment to complete initialization
       Thread.sleep(150);
-      spawnAgents(PILOT, N_PILOT);
-      spawnAgents(RESCUER, N_RESCUER);
+      spawnAgents(PILOT, config.pilotsCount());
+      spawnAgents(RESCUER, config.rescuersCount());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warning("Agent spawning thread was interrupted.");
@@ -127,14 +137,6 @@ public class EmergencyEnvironment extends Environment {
     return spawned;
   }
 
-  @Override
-  public void stop() {
-    if (generatorThread != null) {
-      generatorThread.interrupt();
-    }
-    super.stop();
-  }
-
   /** Simulation loop: at every step a new emergency may be added to the model. */
   private void generateEmergencies() {
     try {
@@ -162,42 +164,68 @@ public class EmergencyEnvironment extends Environment {
     log(agName + " executing action: " + action);
 
     try {
-      String actionName = action.getFunctor();
-
-      if (actionName.equals("join")) {
-        return addAgent(agName, action.getTerm(0).toString());
-      }
-
-      if (actionName.equals("move_towards")) {
-        Thread.sleep(simulationSpeed);
-        return moveRescuer(
-            agName,
-            new Point(
-                Integer.parseInt(action.getTerm(0).toString()),
-                Integer.parseInt(action.getTerm(1).toString())));
-      }
-
+      return switch (action.getFunctor()) {
+        case "join" -> addAgent(agName, action.getTerm(0).toString());
+        case "move_towards" -> {
+          yield moveRescuer(agName, new Location(intArg(action, 0), intArg(action, 1)));
+        }
+        case "start_rescue" -> true; // TODO: Implement the logic for starting a rescue operation
+        default -> {
+          LOGGER.warning("Unknown or unhandled action: " + action);
+          yield false;
+        }
+      };
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return false;
+    } catch (Exception e) {
+      LOGGER.warning(agName + " failed " + action + ": " + e);
+      return false;
     }
-
-    LOGGER.warning("Unknown or unhandled action: " + action);
-    return false;
   }
 
   /** Returns the current percepts for the specified agent. */
   @Override
   public Collection<Literal> getPercepts(String agName) {
+    if (agName.equals(ORCHESTRATOR)) {
+      return buildOrchestratorPercepts(agName);
+    }
+
+    return buildResponderPercepts(agName);
+  }
+
+  private List<Literal> buildOrchestratorPercepts(String agName) {
     List<Literal> percepts = new ArrayList<>();
-    // TODO: Populate percepts based on the agent role and thecurrent state of the environment.
-    if (agName.equals(RESCUER)) {}
+    for (Emergency e : model.getEmergencies()) {
+      // TODO: add emergency percepts
+    }
+    for (Responder r : model.getResponders()) {
+      // TODO: add emergency percepts
+    }
     return percepts;
   }
 
-  private void log(String message) {
-    LOGGER.info(message);
-    view.log(message);
+  private List<Literal> buildResponderPercepts(String agName) {
+    List<Literal> percepts = new ArrayList<>();
+    model
+        .getResponder(agName)
+        .ifPresent(
+            r -> {
+              percepts.add(literal("at", r.position().x, r.position().y));
+              percepts.add(literal("station", r.station().x, r.station().y));
+              model
+                  .getEmergencyAt(r.position())
+                  .ifPresent(
+                      e ->
+                          percepts.add(
+                              literal(
+                                  "emergency_info",
+                                  e.id(),
+                                  e.type().name().toLowerCase(),
+                                  e.severity().name().toLowerCase(),
+                                  e.victims())));
+            });
+    return percepts;
   }
 
   // Internal actions
@@ -223,15 +251,48 @@ public class EmergencyEnvironment extends Environment {
 
   /**
    * AgentSpeak Internal action: move_towards Moves a rescuer agent towards the specified target
-   * point.
    *
    * @param agName the name of the agent to be moved
-   * @param target the target point to move towards
+   * @param target the target location to move towards
    * @return true if the agent was successfully moved, false otherwise
+   * @throws InterruptedException if the thread is interrupted while moving the agent
    */
-  private boolean moveRescuer(String agName, Point target) {
-    // TODO: Implement agent moving logic to the model
-    log("Moved rescuer: " + agName + " towards target: " + target);
+  private boolean moveRescuer(String agName, Location target) throws InterruptedException {
+    Thread.sleep(simulationSpeed);
+    model.moveTowards(agName, target);
     return true;
+  }
+
+  // Utility methods
+
+  private void log(String message) {
+    LOGGER.info(message);
+    view.log(message);
+  }
+
+  private static int intArg(Structure action, int index) throws Exception {
+    return (int) ((NumberTerm) action.getTerm(index)).solve();
+  }
+
+  /**
+   * Creates a literal from atoms, numbers, and terms. For example, literal("at", 3, 4) will create
+   * at(3,4).
+   *
+   * @param functor the name of the literal
+   * @param args the arguments of the literal, which can be integers, terms, or atoms
+   * @return the created literal
+   */
+  private static Literal literal(String functor, Object... args) {
+    Literal literal = ASSyntax.createLiteral(functor);
+    for (Object arg : args) {
+      if (arg instanceof Integer n) {
+        literal.addTerm(ASSyntax.createNumber(n));
+      } else if (arg instanceof Term t) {
+        literal.addTerm(t);
+      } else {
+        literal.addTerm(ASSyntax.createAtom(arg.toString()));
+      }
+    }
+    return literal;
   }
 }
