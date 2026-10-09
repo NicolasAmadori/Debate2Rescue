@@ -1,6 +1,5 @@
 package model;
 
-import config.Config;
 import jason.environment.grid.GridWorldModel;
 import jason.environment.grid.Location;
 import java.util.ArrayList;
@@ -23,10 +22,10 @@ public class SimModelImpl extends GridWorldModel implements SimModel {
 
   private int nextEmergencyId = 1;
 
-  public SimModelImpl(int w, int h) {
-    super(w, h, 0);
+  public SimModelImpl(int width, int height, int numStations) {
+    super(width, height, 0);
     stations = new ArrayList<>();
-    for (int i = 0; i < Config.getNumStations(w, h); i++) {
+    for (int i = 0; i < numStations; i++) {
       Location pos = getFreePos(STATION);
       stations.add(pos);
       add(STATION, pos);
