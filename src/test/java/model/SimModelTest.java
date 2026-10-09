@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import config.Config;
+import jason.environment.grid.Location;
 import org.junit.jupiter.api.Test;
 
 class SimModelTest {
@@ -48,5 +49,22 @@ class SimModelTest {
 
     assertTrue(model.resolveEmergency(emergency.id()).isPresent());
     assertTrue(model.getEmergencies().isEmpty());
+  }
+
+  @Test
+  void testMovingResponders() {
+    model.addResponder("rescuer1", ResponderRole.RESCUER);
+    model.addResponder("pilot1", ResponderRole.PILOT);
+    Location target = new Location(5, 5);
+    model.moveTowards("rescuer1", target);
+    model.moveTowards("pilot1", target);
+    assertEquals(
+        new Location(2, 1),
+        model.getResponder("rescuer1").orElseThrow().position(),
+        "Rescuer should move one cell");
+    assertEquals(
+        new Location(3, 1),
+        model.getResponder("pilot1").orElseThrow().position(),
+        "Pilot should move two cells");
   }
 }
