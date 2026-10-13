@@ -6,7 +6,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.Point;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.IntConsumer;
 import javax.swing.SwingUtilities;
 import model.Responder;
@@ -24,6 +26,7 @@ public class ViewImpl extends GridWorldView implements View {
 
   public ViewImpl(SimModel model) {
     super(model, "Debate2Rescue", GRID_SIZE_PX);
+    new CellTooltip(this, getCanvas(), this::cellAt, model);
     setDefaultCloseOperation(EXIT_ON_CLOSE);
     setVisible(true);
   }
@@ -118,6 +121,11 @@ public class ViewImpl extends GridWorldView implements View {
     }
     cell.drawRect(0, 0, width - 1, height - 1);
     cell.dispose();
+  }
+
+  private Optional<Location> cellAt(Point point) {
+    Location cell = new Location(point.x / cellSizeW, point.y / cellSizeH);
+    return model.inGrid(cell) ? Optional.of(cell) : Optional.empty();
   }
 
   private static Color colorOf(ResponderRole role) {

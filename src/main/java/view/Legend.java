@@ -29,10 +29,14 @@ class Legend extends JPanel {
     }
   }
 
-  /** FIRE becomes "Fire", ARMED_PERSON becomes "Armed person" */
   private static JLabel entry(String name, Icon icon) {
+    return new JLabel(readable(name), icon, JLabel.LEFT);
+  }
+
+  /** FIRE becomes "Fire", ARMED_PERSON becomes "Armed person" */
+  static String readable(String name) {
     String text = name.toLowerCase(Locale.ROOT).replace('_', ' ');
-    return new JLabel(Character.toUpperCase(text.charAt(0)) + text.substring(1), icon, JLabel.LEFT);
+    return Character.toUpperCase(text.charAt(0)) + text.substring(1);
   }
 
   private enum Shape {
