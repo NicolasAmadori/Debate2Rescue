@@ -21,13 +21,13 @@ public final class SimConfigDialog {
   private static final int STATIONS_MAX = 10;
   private static final int DEFAULT_STATIONS = 2;
   // Rescuers values
-  private static final int RESCUERS_MIN = 5;
-  private static final int RESCUERS_MAX = 50;
-  private static final int DEFAULT_RESCUERS = 20;
+  private static final int RESCUERS_MIN = 1;
+  private static final int RESCUERS_MAX = 30;
+  private static final int DEFAULT_RESCUERS = 5;
   // Pilots values
-  private static final int PILOTS_MIN = 5;
-  private static final int PILOTS_MAX = 50;
-  private static final int DEFAULT_PILOTS = 20;
+  private static final int PILOTS_MIN = 1;
+  private static final int PILOTS_MAX = 15;
+  private static final int DEFAULT_PILOTS = 2;
 
   private SimConfigDialog() {}
 
