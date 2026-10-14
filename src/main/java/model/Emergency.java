@@ -28,4 +28,23 @@ public record Emergency(
   public Emergency newStatus(EmergencyStatus newStatus) {
     return new Emergency(id, position, type, severity, victims, newStatus);
   }
+
+  @Override
+  public String toString() {
+    return "Emergency["
+        + this.id
+        + "] at ("
+        + this.position.x
+        + ","
+        + this.position.y
+        + "): "
+        + this.type.toString()
+        + " with "
+        + this.severity.toString()
+        + "["
+        + this.severity.esi
+        + "], n."
+        + this.victims
+        + " victims";
+  }
 }
