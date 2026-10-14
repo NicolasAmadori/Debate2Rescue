@@ -30,7 +30,7 @@
 
 // Waiting for the emergency to end before proceeding.
 +!wait_emergency_ending(Id) : emergency_info(Id, _, _, _) <-
-	wait_steps(1); // TODO: add internal action to wait n simulation steps
+	wait_steps(1);
 	!wait_emergency_ending(Id).
 
 // When the emergency has ended, the agent stops waiting and can go home.

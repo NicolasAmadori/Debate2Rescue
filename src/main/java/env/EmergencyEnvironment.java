@@ -170,6 +170,8 @@ public class EmergencyEnvironment extends Environment {
         case "move_towards" ->
             moveRescuer(agName, new Location(intArg(action, 0), intArg(action, 1)));
         case "start_rescue" -> startRescue(agName, intArg(action, 0));
+        case "wait_steps" -> waitSteps(intArg(action, 0));
+        case "resolve_emergency" -> resolveEmergency(agName, intArg(action, 0));
         default -> {
           LOGGER.warning("Unknown or unhandled action: " + action);
           yield false;
@@ -222,8 +224,8 @@ public class EmergencyEnvironment extends Environment {
                               literal(
                                   "emergency_info",
                                   e.id(),
-                                  e.type().name().toLowerCase(),
-                                  e.severity().name().toLowerCase(),
+                                  e.type().colorCode,
+                                  e.severity().esi,
                                   e.victims())));
             });
     return percepts;
@@ -275,6 +277,37 @@ public class EmergencyEnvironment extends Environment {
   private boolean startRescue(String agName, int id) {
     Optional<Emergency> emergency = model.setEmergencyStatus(id, EmergencyStatus.IN_PROGRESS);
     emergency.ifPresent(e -> log(agName + " reached emergency " + id + ": " + e));
+    return emergency.isPresent();
+  }
+
+  /**
+   * AgentSpeak Internal action: wait_steps. Makes the agent wait for the specified number of
+   * simulation steps.
+   *
+   * @param steps the number of simulation steps to wait
+   * @return true after waiting
+   * @throws InterruptedException if the thread is interrupted while waiting
+   */
+  private boolean waitSteps(int steps) throws InterruptedException {
+    Thread.sleep(simulationSpeed * steps);
+    return true;
+  }
+
+  /**
+   * AgentSpeak Internal action: resolve_emergency. Resolves the specified emergency by the given
+   * agent.
+   *
+   * @param agName the name of the agent resolving the emergency
+   * @param id the ID of the emergency to be resolved
+   * @return true if the emergency was successfully resolved, false otherwise
+   */
+  private boolean resolveEmergency(String agName, int id) {
+    Optional<Emergency> emergency = model.resolveEmergency(id);
+    emergency.ifPresent(
+        e -> {
+          log("Emergency " + id + " resolved by: " + agName);
+          informAgsEnvironmentChanged();
+        });
     return emergency.isPresent();
   }
 
