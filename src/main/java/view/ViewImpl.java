@@ -7,12 +7,14 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
+import java.awt.Toolkit;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.IntConsumer;
 import javax.swing.SwingUtilities;
+import model.Pilot;
+import model.Rescuer;
 import model.Responder;
-import model.ResponderRole;
 import model.SimModel;
 
 public class ViewImpl extends GridWorldView implements View {
@@ -43,8 +45,10 @@ public class ViewImpl extends GridWorldView implements View {
   }
 
   @Override
-  public void update() {
-    repaint();
+  public void update(int x, int y) {
+    super.update(x, y);
+    // Linux fix: without it some movements are not painted
+    Toolkit.getDefaultToolkit().sync();
   }
 
   @Override
@@ -85,7 +89,7 @@ public class ViewImpl extends GridWorldView implements View {
     for (int i = 0; i < here.size(); i++) {
       int slotX = x * cellSizeW + (i % slotsPerSide) * slotW;
       int slotY = top + (i / slotsPerSide) * slotH;
-      g.setColor(colorOf(here.get(i).role()));
+      g.setColor(colorOf(here.get(i)));
       // the circle is centered on the shorter side of the container
       int diameter = Math.min(slotW, slotH) - 2 * gap;
       g.fillOval(
@@ -128,10 +132,10 @@ public class ViewImpl extends GridWorldView implements View {
     return model.inGrid(cell) ? Optional.of(cell) : Optional.empty();
   }
 
-  private static Color colorOf(ResponderRole role) {
-    return switch (role) {
-      case RESCUER -> AgentType.RESCUER.getColor();
-      case PILOT -> AgentType.PILOT.getColor();
+  private static Color colorOf(Responder responder) {
+    return switch (responder) {
+      case Rescuer r -> AgentType.RESCUER.getColor();
+      case Pilot p -> AgentType.PILOT.getColor();
     };
   }
 
