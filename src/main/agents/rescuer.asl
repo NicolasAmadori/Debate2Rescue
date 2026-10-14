@@ -20,7 +20,7 @@
 // Requesting a helicopter for the emergency.
 // TODO: change this to request other types of resources if needed.
 +!evaluate(Id, Type, Severity, Victims) <-
-	.send(orchestrator, tell, request(Id, helicopter, [Type, Severity, Victims]))
+	.send(orchestrator, tell, request(Id, helicopter, [Type, Severity, Victims])).
 
 //When granted a helicopter for the emergency, the agent waits for the operation to end and then goes home.
 +granted(Id, helicopter)[source(orchestrator)] <-
