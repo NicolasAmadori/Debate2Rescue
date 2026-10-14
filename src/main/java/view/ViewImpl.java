@@ -6,7 +6,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.Point;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.IntConsumer;
 import javax.swing.SwingUtilities;
 import model.Responder;
@@ -24,6 +26,7 @@ public class ViewImpl extends GridWorldView implements View {
 
   public ViewImpl(SimModel model) {
     super(model, "Debate2Rescue", GRID_SIZE_PX);
+    new CellTooltip(this, getCanvas(), this::cellAt, model);
     setDefaultCloseOperation(EXIT_ON_CLOSE);
     setVisible(true);
   }
@@ -105,16 +108,24 @@ public class ViewImpl extends GridWorldView implements View {
 
   /** Draws a station as a striped cell */
   private void drawStation(Graphics g, int x, int y) {
-    int width = cellSizeW - 1;
-    int height = cellSizeH - 1;
+    drawStripes(g, x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);
+  }
+
+  /** Draws the striped square of a station, also used by the legend */
+  static void drawStripes(Graphics g, int left, int top, int width, int height) {
     // avoiding painting outside requires a nel canva for the square
-    Graphics cell = g.create(x * cellSizeW + 1, y * cellSizeH + 1, width, height);
+    Graphics cell = g.create(left, top, width, height);
     cell.setColor(STATION_COLOR);
     for (int i = -height; i < width; i += STRIPE_GAP_PX) {
       cell.drawLine(i, height, i + height, 0);
     }
     cell.drawRect(0, 0, width - 1, height - 1);
     cell.dispose();
+  }
+
+  private Optional<Location> cellAt(Point point) {
+    Location cell = new Location(point.x / cellSizeW, point.y / cellSizeH);
+    return model.inGrid(cell) ? Optional.of(cell) : Optional.empty();
   }
 
   private static Color colorOf(ResponderRole role) {
@@ -128,7 +139,7 @@ public class ViewImpl extends GridWorldView implements View {
     return (SimModel) this.model;
   }
 
-  private static Color toColor(String colorCode) {
+  static Color toColor(String colorCode) {
     return switch (colorCode) {
       case "red" -> Color.RED;
       case "blue" -> Color.BLUE;

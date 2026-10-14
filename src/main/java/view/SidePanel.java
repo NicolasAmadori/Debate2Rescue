@@ -33,7 +33,10 @@ class SidePanel extends JPanel {
     // moving the slider to the right speeds up the simulation
     speedSlider.setInverted(true);
     speedSlider.setBorder(BorderFactory.createTitledBorder("Speed"));
-    add(speedSlider, BorderLayout.NORTH);
+    JPanel top = new JPanel(new BorderLayout(0, 8));
+    top.add(speedSlider, BorderLayout.NORTH);
+    top.add(new Legend(), BorderLayout.CENTER);
+    add(top, BorderLayout.NORTH);
 
     logArea.setEditable(false);
     logArea.setLineWrap(true);
