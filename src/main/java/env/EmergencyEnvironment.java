@@ -225,7 +225,7 @@ public class EmergencyEnvironment extends Environment {
                                   "emergency_info",
                                   e.id(),
                                   e.type().name().toLowerCase(),
-                                  e.severity().name().toLowerCase(),
+                                  e.severity().esi,
                                   e.victims())));
             });
     return percepts;
