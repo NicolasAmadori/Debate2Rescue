@@ -197,10 +197,11 @@ public class EmergencyEnvironment extends Environment {
   private List<Literal> buildOrchestratorPercepts(String agName) {
     List<Literal> percepts = new ArrayList<>();
     for (Emergency e : model.getEmergencies()) {
-      // TODO: add emergency percepts
+      percepts.add(literal("emergency", e.id(), e.position().x, e.position().y));
     }
     for (Responder r : model.getResponders()) {
-      // TODO: add emergency percepts
+      String functor = r.role() == ResponderRole.RESCUER ? "rescuer" : "pilot";
+      percepts.add(literal(functor, r.name(), r.position().x, r.position().y));
     }
     return percepts;
   }
