@@ -1,32 +1,30 @@
 /* Rules */
 
-// a rescuer can take an emergency if it is free and we did not already give it one
-available(R) :- free[source(R)] & rescuer(R, _, _) & not assigned(R, _).
-
 // D is the Manhattan distance between rescuer R and the cell (X, Y)
-distance(R, X, Y, D) :- rescuer(R, RX, RY) & D = math.abs(RX - X) + math.abs(RY - Y).
+distance(RX, XY, X, Y, D) :- D = math.abs(RX - X) + math.abs(RY - Y).
 
 /* Plans */
 
 +emergency(Id, X, Y) <-
-	.print("New emergency ", Id, " at (", X, ",", Y, ")");
 	!assign(Id, X, Y).
 
 -emergency(Id, _, _) <-
+	.abolish(assigned(_, Id));
 	.print("Emergency ", Id, " is over").
 
 // a rescuer is free again, give it a waiting emergency, if any
-+free[source(R)] <-
-	.abolish(assigned(R, _));
++free(rescuer)[source(R)] <-
+	-free(rescuer)[source(R)];
+	+availableRescuer(R);
 	!assign_waiting.
 
 // atomic so two emergencies arriving together cannot get the same rescuer
 @assign[atomic]
-+!assign(Id, X, Y) : not assigned(_, Id) & available(_) <-
-	.findall(d(D, R), available(R) & distance(R, X, Y, D), Candidates);
++!assign(Id, X, Y) : not assigned(_, Id) & availableRescuer(_) <-
+	.findall(d(D, R), availableRescuer(R) & rescuer(R, RX, RY) & distance(RX, RY, X, Y, D), Candidates);
 	.min(Candidates, d(D, R));
 	+assigned(R, Id);
-	-free[source(R)];
+	-availableRescuer(R);
 	.print("Emergency ", Id, " assigned to ", R, " (distance ", D, ")");
 	.send(R, achieve, handle(Id, X, Y)).
 
