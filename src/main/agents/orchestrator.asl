@@ -71,7 +71,7 @@ distance(AX, AY, X, Y, D) :- D = math.abs(AX - X) + math.abs(AY - Y).
 	+granted(P, Id);
 	.print("Resource type ", RT, " with pilot ", P, " granted to ", R, " for emergency ", Id, " (distance ", D, ")");
 	.send(R, tell, granted(Id, RT));
-	.send(P, achieve, move_to_emergency(Id, X, Y)).
+	.send(P, achieve, move_to_emergency(Id, R, X, Y)).
 
 // no free pilot, the request stays in the belief base until one is free
 +!grant(Id, RT) <-
