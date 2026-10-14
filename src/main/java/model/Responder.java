@@ -15,4 +15,21 @@ public record Responder(String name, ResponderRole role, Location station, Locat
   public Responder moveTo(Location newPosition) {
     return new Responder(name, role, station, newPosition);
   }
+
+  @Override
+  public String toString() {
+    return this.role.toString()
+        + "["
+        + this.name
+        + "]"
+        + " at ("
+        + this.position.x
+        + ","
+        + this.position.y
+        + "): from station ("
+        + this.station.x
+        + ","
+        + this.station.y
+        + ")";
+  }
 }
