@@ -168,7 +168,7 @@ public class EmergencyEnvironment extends Environment {
       return switch (action.getFunctor()) {
         case "join" -> addAgent(agName, action.getTerm(0).toString());
         case "move_towards" ->
-            moveRescuer(agName, new Location(intArg(action, 0), intArg(action, 1)));
+            moveTowards(agName, new Location(intArg(action, 0), intArg(action, 1)));
         case "start_rescue" -> startRescue(agName, intArg(action, 0));
         case "wait_steps" -> waitSteps(intArg(action, 0));
         case "resolve_emergency" -> resolveEmergency(agName, intArg(action, 0));
@@ -260,7 +260,7 @@ public class EmergencyEnvironment extends Environment {
    * @return true if the agent was successfully moved, false otherwise
    * @throws InterruptedException if the thread is interrupted while moving the agent
    */
-  private boolean moveRescuer(String agName, Location target) throws InterruptedException {
+  private boolean moveTowards(String agName, Location target) throws InterruptedException {
     Thread.sleep(simulationSpeed);
     model.moveTowards(agName, target);
     return true;
