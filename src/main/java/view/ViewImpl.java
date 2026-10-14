@@ -7,6 +7,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
+import java.awt.Toolkit;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.IntConsumer;
@@ -44,8 +45,10 @@ public class ViewImpl extends GridWorldView implements View {
   }
 
   @Override
-  public void update() {
-    repaint();
+  public void update(int x, int y) {
+    super.update(x, y);
+    // Linux fix: without it some movements are not painted
+    Toolkit.getDefaultToolkit().sync();
   }
 
   @Override
