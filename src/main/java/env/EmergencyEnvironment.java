@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.logging.Logger;
 import model.Emergency;
+import model.EmergencyStatus;
 import model.Responder;
 import model.ResponderRole;
 import model.SimModel;
@@ -166,10 +167,9 @@ public class EmergencyEnvironment extends Environment {
     try {
       return switch (action.getFunctor()) {
         case "join" -> addAgent(agName, action.getTerm(0).toString());
-        case "move_towards" -> {
-          yield moveRescuer(agName, new Location(intArg(action, 0), intArg(action, 1)));
-        }
-        case "start_rescue" -> true; // TODO: Implement the logic for starting a rescue operation
+        case "move_towards" ->
+            moveRescuer(agName, new Location(intArg(action, 0), intArg(action, 1)));
+        case "start_rescue" -> startRescue(agName, intArg(action, 0));
         default -> {
           LOGGER.warning("Unknown or unhandled action: " + action);
           yield false;
@@ -232,7 +232,7 @@ public class EmergencyEnvironment extends Environment {
   // Internal actions
 
   /**
-   * AgentSpeak Internal action: join Adds an agent to the environment with the specified role.
+   * AgentSpeak Internal action: join. Adds an agent to the environment with the specified role.
    *
    * @param agName the name of the agent to be added
    * @param role the role of the agent to be added
@@ -251,7 +251,7 @@ public class EmergencyEnvironment extends Environment {
   }
 
   /**
-   * AgentSpeak Internal action: move_towards Moves a rescuer agent towards the specified target
+   * AgentSpeak Internal action: move_towards. Moves a rescuer agent towards the specified target
    *
    * @param agName the name of the agent to be moved
    * @param target the target location to move towards
@@ -262,6 +262,20 @@ public class EmergencyEnvironment extends Environment {
     Thread.sleep(simulationSpeed);
     model.moveTowards(agName, target);
     return true;
+  }
+
+  /**
+   * AgentSpeak Internal action: start_rescue. Starts the rescue operation for the specified
+   * emergency by the given agent.
+   *
+   * @param agName the name of the agent performing the rescue
+   * @param id the ID of the emergency to be rescued
+   * @return true if the rescue operation was successfully started, false otherwise
+   */
+  private boolean startRescue(String agName, int id) {
+    Optional<Emergency> emergency = model.setEmergencyStatus(id, EmergencyStatus.IN_PROGRESS);
+    emergency.ifPresent(e -> log(agName + " reached emergency " + id + ": " + e));
+    return emergency.isPresent();
   }
 
   // Utility methods
