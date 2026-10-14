@@ -5,7 +5,7 @@
 /* Plans */
 
 +!start <-
-	join(pilot);
+	join_as_pilot;
 	.send(orchestrator, tell, free(pilot)).
 
 +!move_to_emergency(Id, X, Y)[source(orchestrator)] <-

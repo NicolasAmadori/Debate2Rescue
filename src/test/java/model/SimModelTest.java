@@ -19,13 +19,13 @@ class SimModelTest {
 
   @Test
   void testAddResponders() {
-    Responder rescuer1 = model.addResponder("rescuer1", ResponderRole.RESCUER);
+    Responder rescuer1 = model.addRescuer("rescuer1");
     System.out.println(rescuer1);
-    Responder rescuer2 = model.addResponder("rescuer2", ResponderRole.RESCUER);
+    Responder rescuer2 = model.addRescuer("rescuer2");
     System.out.println(rescuer2);
-    Responder pilot1 = model.addResponder("pilot1", ResponderRole.PILOT);
+    Responder pilot1 = model.addPilot("pilot1");
     System.out.println(pilot1);
-    Responder pilot2 = model.addResponder("pilot2", ResponderRole.PILOT);
+    Responder pilot2 = model.addPilot("pilot2");
     System.out.println(pilot2);
     assertEquals(model.getStations().get(0), rescuer1.station());
     assertEquals(
@@ -58,9 +58,9 @@ class SimModelTest {
 
   @Test
   void testMovingResponders() {
-    model.addResponder("rescuer1", ResponderRole.RESCUER);
+    model.addRescuer("rescuer1");
     Location rescuerStation = model.getResponder("rescuer1").orElseThrow().station();
-    model.addResponder("pilot1", ResponderRole.PILOT);
+    model.addPilot("pilot1");
     Location pilotStation = model.getResponder("pilot1").orElseThrow().station();
     int distRescuer, distPilot;
     Location target;
@@ -84,8 +84,8 @@ class SimModelTest {
 
   @Test
   void testCellUpdating() {
-    model.addResponder("rescuer1", ResponderRole.RESCUER);
-    model.addResponder("pilot1", ResponderRole.PILOT);
+    model.addRescuer("rescuer1");
+    model.addPilot("pilot1");
     Location station = model.getStations().get(0);
     Location target = model.getFreePosition().orElseThrow();
 
