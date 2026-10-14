@@ -17,8 +17,24 @@
 	?emergency_info(Id, Type, Severity, Victims);
 	!evaluate(Id, Type, Severity, Victims).
 
+// Requesting a helicopter for the emergency.
+// TODO: change this to request other types of resources if needed.
 +!evaluate(Id, Type, Severity, Victims) <-
 	.send(orchestrator, tell, request(Id, helicopter, [Type, Severity, Victims]))
+
+//When granted a helicopter for the emergency, the agent waits for the operation to end and then goes home.
++granted(Id, helicopter)[source(orchestrator)] <-
+	-granted(Id, helicopter)[source(orchestrator)];
+	!wait_emergency_ending(Id);
+	!go_home.
+
+// Waiting for the emergency to end before proceeding.
++!wait_emergency_ending(Id) : emergency_info(Id, _, _, _) <-
+	wait_steps(1); // TODO: add internal action to wait n simulation steps
+	!wait_emergency_ending(Id).
+
+// When the emergency has ended, the agent stops waiting and can go home.
++!wait_emergency_ending(_).
 
 // If the agent is already at the target location, do nothing.
 +!go_to(X, Y)[source(S)] : (S == self | S == orchestrator) & at(X, Y).
