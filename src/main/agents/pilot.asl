@@ -10,9 +10,9 @@
 
 +!move_to_emergency(Id, X, Y)[source(orchestrator)] <-
 	!go_to(X, Y);
-	?emergency_info(Id, _, _, Victims);
-	waitSteps(3 + 2*Victims); // TODO: use emergency severity to modify the time spent (less if severity is high)
-	resolveEmergency(Id);
+	?emergency_info(Id, _, Severity, Victims);
+	wait_steps(2*Severity + Victims);
+	resolve_emergency(Id);
 	?station(SX, SY);
 	!go_to(SX, SY);
 	.abolish(emergency_info(_, _, _, _)); // remove possible residual unresolved emergency info
