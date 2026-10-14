@@ -6,7 +6,7 @@
 
 // Plan for starting the agent and joining the model and notifying the orchestrator.
 +!start <-
-	join(rescuer);
+	join_as_rescuer;
 	.send(orchestrator, tell, free(rescuer)).
 
 // Handling emergencies assigned by the orchestrator.

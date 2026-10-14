@@ -18,8 +18,9 @@ import java.util.Random;
 import java.util.logging.Logger;
 import model.Emergency;
 import model.EmergencyStatus;
+import model.Pilot;
+import model.Rescuer;
 import model.Responder;
-import model.ResponderRole;
 import model.SimModel;
 import view.SimConfigDialog;
 import view.View;
@@ -32,6 +33,15 @@ public class EmergencyEnvironment extends Environment {
   private static final String ORCHESTRATOR = "orchestrator";
   private static final String RESCUER = "rescuer";
   private static final String PILOT = "pilot";
+
+  // Percepts
+  private static final String PERCEPT_RESCUER = "rescuer";
+  private static final String PERCEPT_PILOT = "pilot";
+  private static final String PERCEPT_EMERGENCY = "emergency";
+  private static final String PERCEPT_AT = "at";
+  private static final String PERCEPT_STATION = "station";
+  private static final String PERCEPT_EMERGENCY_INFO = "emergency_info";
+  private static final String PERCEPT_RESOURCE = "resource";
 
   // Emergency generation
   private static final int ACTION_THREADS = 20;
@@ -166,7 +176,8 @@ public class EmergencyEnvironment extends Environment {
 
     try {
       return switch (action.getFunctor()) {
-        case "join" -> addAgent(agName, action.getTerm(0).toString());
+        case "join_as_rescuer" -> joinAsRescuer(agName);
+        case "join_as_pilot" -> joinAsPilot(agName);
         case "move_towards" ->
             moveTowards(agName, new Location(intArg(action, 0), intArg(action, 1)));
         case "start_rescue" -> startRescue(agName, intArg(action, 0));
@@ -198,12 +209,20 @@ public class EmergencyEnvironment extends Environment {
 
   private List<Literal> buildOrchestratorPercepts(String agName) {
     List<Literal> percepts = new ArrayList<>();
-    for (Emergency e : model.getEmergencies()) {
-      percepts.add(literal("emergency", e.id(), e.position().x, e.position().y));
+    for (Rescuer r : model.getRescuers()) {
+      percepts.add(literal(PERCEPT_RESCUER, r.name(), r.position().x, r.position().y));
     }
-    for (Responder r : model.getResponders()) {
-      String functor = r.role() == ResponderRole.RESCUER ? "rescuer" : "pilot";
-      percepts.add(literal(functor, r.name(), r.position().x, r.position().y));
+    for (Pilot p : model.getPilots()) {
+      percepts.add(
+          literal(
+              PERCEPT_PILOT,
+              p.name(),
+              p.resource().name().toLowerCase(),
+              p.position().x,
+              p.position().y));
+    }
+    for (Emergency e : model.getEmergencies()) {
+      percepts.add(literal(PERCEPT_EMERGENCY, e.id(), e.position().x, e.position().y));
     }
     return percepts;
   }
@@ -214,15 +233,15 @@ public class EmergencyEnvironment extends Environment {
         .getResponder(agName)
         .ifPresent(
             r -> {
-              percepts.add(literal("at", r.position().x, r.position().y));
-              percepts.add(literal("station", r.station().x, r.station().y));
+              percepts.add(literal(PERCEPT_AT, r.position().x, r.position().y));
+              percepts.add(literal(PERCEPT_STATION, r.station().x, r.station().y));
               model
                   .getEmergencyAt(r.position())
                   .ifPresent(
                       e ->
                           percepts.add(
                               literal(
-                                  "emergency_info",
+                                  PERCEPT_EMERGENCY_INFO,
                                   e.id(),
                                   e.type().colorCode,
                                   e.severity().esi,
@@ -233,23 +252,29 @@ public class EmergencyEnvironment extends Environment {
 
   // Internal actions
 
-  /**
-   * AgentSpeak Internal action: join. Adds an agent to the environment with the specified role.
-   *
-   * @param agName the name of the agent to be added
-   * @param role the role of the agent to be added
-   * @return true if the agent was successfully added, false otherwise
-   */
-  private boolean addAgent(String agName, String role) {
-    Responder responder = model.addResponder(agName, ResponderRole.valueOf(role.toUpperCase()));
-    log(
-        responder.name()
-            + " joined at station ("
-            + responder.station().x
-            + ","
-            + responder.station().y
-            + ")");
+  private boolean join(Responder r) {
+    log(r.name() + " joined at station (" + r.station().x + "," + r.station().y + ")");
     return true;
+  }
+
+  /**
+   * AgentSpeak Internal action: join_as_rescuer. Makes the agent join as a rescuer.
+   *
+   * @param agName the name of the agent joining as a rescuer
+   * @return true if the agent successfully joined as a rescuer, false otherwise
+   */
+  private boolean joinAsRescuer(String agName) {
+    return join(model.addRescuer(agName));
+  }
+
+  /**
+   * AgentSpeak Internal action: join_as_pilot. Makes the agent join as a pilot.
+   *
+   * @param agName the name of the agent joining as a pilot
+   * @return true if the agent successfully joined as a pilot, false otherwise
+   */
+  private boolean joinAsPilot(String agName) {
+    return join(model.addPilot(agName));
   }
 
   /**
