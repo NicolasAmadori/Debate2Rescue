@@ -20,9 +20,13 @@ class SimModelTest {
   @Test
   void testAddResponders() {
     Responder rescuer1 = model.addResponder("rescuer1", ResponderRole.RESCUER);
+    System.out.println(rescuer1);
     Responder rescuer2 = model.addResponder("rescuer2", ResponderRole.RESCUER);
+    System.out.println(rescuer2);
     Responder pilot1 = model.addResponder("pilot1", ResponderRole.PILOT);
+    System.out.println(pilot1);
     Responder pilot2 = model.addResponder("pilot2", ResponderRole.PILOT);
+    System.out.println(pilot2);
     assertEquals(model.getStations().get(0), rescuer1.station());
     assertEquals(
         model.getStations().get(1),
