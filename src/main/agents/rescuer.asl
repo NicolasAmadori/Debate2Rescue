@@ -17,6 +17,9 @@
 	?emergency_info(Id, Type, Severity, Victims);
 	!evaluate(Id, Type, Severity, Victims).
 
++!evaluate(Id, Type, Severity, Victims) <-
+	.send(orchestrator, tell, request(Id, helicopter, [Type, Severity, Victims]))
+
 // If the agent is already at the target location, do nothing.
 +!go_to(X, Y)[source(S)] : (S == self | S == orchestrator) & at(X, Y).
 
@@ -24,3 +27,8 @@
 +!go_to(X, Y)[source(S)] : (S == self | S == orchestrator) <-
     move_towards(X, Y);
     !go_to(X, Y).
+
++!go_home <-
+	?station(X, Y);
+	!go_to(X, Y);
+	.send(orchestrator, tell, free(rescuer)).
