@@ -182,6 +182,14 @@ public class SimModel extends GridWorldModel {
   }
 
   /***
+   * Returns a list of all responders currently in the simulation.
+   * @return a list of all responders
+   */
+  public synchronized List<Responder> getResponders() {
+    return List.copyOf(responders.values());
+  }
+
+  /***
    * Gets the responder at a given position.
    *
    * @param position

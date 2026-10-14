@@ -1,113 +1,73 @@
 package env;
 
+import config.ConfigValues;
+import jason.asSyntax.ASSyntax;
 import jason.asSyntax.Literal;
+import jason.asSyntax.NumberTerm;
 import jason.asSyntax.Structure;
+import jason.asSyntax.Term;
 import jason.environment.Environment;
+import jason.environment.grid.Location;
 import jason.runtime.RuntimeServices;
 import jason.runtime.RuntimeServicesFactory;
-import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.logging.Logger;
-import model.ModelGenerator;
-import model.TestEmergency;
-import model.TestModel;
+import model.Emergency;
+import model.EmergencyStatus;
+import model.Responder;
+import model.ResponderRole;
+import model.SimModel;
+import view.SimConfigDialog;
 import view.View;
 import view.ViewImpl;
 
 public class EmergencyEnvironment extends Environment {
-  // Simulation settings
-  private static final int SIMULATION_SPEED = 300;
+  private static final Logger LOGGER = Logger.getLogger(EmergencyEnvironment.class.getName());
 
-  // Rescuer agent
-  private static final int N_RESCUER = 4;
+  // Agent roles
+  private static final String ORCHESTRATOR = "orchestrator";
   private static final String RESCUER = "rescuer";
-  private static final String RESCUER_ASL_PATH = "src/main/agents/rescuer.asl";
-
-  // Pilot agent
-  private static final int N_PILOT = 4;
   private static final String PILOT = "pilot";
-  private static final String PILOT_ASL_PATH = "src/main/agents/pilot.asl";
 
   // Emergency generation
+  private static final int ACTION_THREADS = 20;
   private static final int SPAWN_CHANCE_PERCENTAGE = 90;
   private static final int MAX_EMERGENCIES = 20;
 
-  private static final Logger logger = Logger.getLogger(EmergencyEnvironment.class.getName());
-
-  private final Random random = new Random();
-  private final ModelGenerator modelGenerator = new ModelGenerator();
-
-  private Thread generatorThread;
-  private TestModel testModel;
+  private SimModel model;
   private View view;
+  private ConfigValues config;
+  private final Random random = new Random();
+  private Thread generatorThread;
+  private int simulationSpeed = 300; // Managed from the view
+
+  public EmergencyEnvironment() {
+    // Increased the number of action threads for better concurrency handling
+    super(ACTION_THREADS);
+  }
 
   @Override
   public void init(String[] args) {
     super.init(args);
+    config = getConfigValues(args);
 
-    testModel = modelGenerator.generateSmallScenario();
-
-    // TODO: Init real model
-    // TODO: Init view
-    view = new ViewImpl(testModel);
-
-    // TODO: remove, just to see something on the grid
-    testModel.add(TestModel.STATION, 1, 1);
-    testModel.setAgPos(0, 3, 3);
-    testModel.setAgPos(1, 6, 2);
+    model = new SimModel(config.gridWidth(), config.gridHeight(), config.stationsCount());
+    view = new ViewImpl(model);
+    view.setOnSpeedChange(speed -> simulationSpeed = speed);
 
     // Spawning dynamic rescuers asynchronously
     new Thread(this::spawnInitialAgents, "agent-spawner").start();
 
+    // Starting the emergency generator thread
     generatorThread = new Thread(this::generateEmergencies, "emergency-generator");
     generatorThread.setDaemon(true);
     generatorThread.start();
 
-    logger.info("EmergencyEnvironment initialized.");
-  }
-
-  /** Spawns the initial configured batch of dynamic rescuers and pilots. */
-  private void spawnInitialAgents() {
-    try {
-      // Wait for the MAS environment to complete initialization
-      Thread.sleep(150);
-      spawnAgents(RESCUER, RESCUER_ASL_PATH, N_RESCUER);
-      spawnAgents(PILOT, PILOT_ASL_PATH, N_PILOT);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.warning("Agent spawning thread was interrupted.");
-    }
-  }
-
-  /**
-   * Dynamically creates and registers a batch of new agents with unique names.
-   *
-   * @param role The role identifier (e.g., RESCUER or PILOT)
-   * @param aslPath Path to the ASL source file
-   * @param count Number of agents to spawn
-   * @return The list of created agent names
-   */
-  public synchronized List<String> spawnAgents(String role, String aslPath, int count) {
-    List<String> spawned = new ArrayList<>();
-    RuntimeServices services = RuntimeServicesFactory.get();
-
-    for (int i = 0; i < count; i++) {
-      String agName = String.format("%s_%d", role, i + 1);
-      try {
-        String createdAgName = services.createAgent(agName, aslPath, null, null, null, null, null);
-        services.startAgent(createdAgName);
-        spawned.add(createdAgName);
-      } catch (Exception e) {
-        logger.severe(
-            "Failed to spawn dynamic agent " + agName + " (" + role + "): " + e.getMessage());
-      }
-    }
-
-    return spawned;
+    log("EmergencyEnvironment initialized.");
   }
 
   @Override
@@ -118,19 +78,81 @@ public class EmergencyEnvironment extends Environment {
     super.stop();
   }
 
+  private ConfigValues getConfigValues(String[] args) {
+    ConfigValues configValues;
+    if (args.length == 5) {
+      configValues =
+          new ConfigValues(
+              Integer.parseInt(args[0]),
+              Integer.parseInt(args[1]),
+              Integer.parseInt(args[2]),
+              Integer.parseInt(args[3]),
+              Integer.parseInt(args[4]));
+    } else {
+      Optional<ConfigValues> chosen = SimConfigDialog.ask();
+      if (chosen.isEmpty()) {
+        System.exit(0);
+      }
+      configValues = chosen.get();
+    }
+    return configValues;
+  }
+
+  /** Spawns the initial configured batch of dynamic rescuers and pilots. */
+  private void spawnInitialAgents() {
+    try {
+      // Wait for the MAS environment to complete initialization
+      Thread.sleep(150);
+      spawnAgents(PILOT, config.pilotsCount());
+      spawnAgents(RESCUER, config.rescuersCount());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warning("Agent spawning thread was interrupted.");
+    }
+  }
+
+  /**
+   * Dynamically creates and registers a batch of new agents with unique names.
+   *
+   * @param role The role identifier
+   * @param count Number of agents to spawn
+   * @return The list of created agent names
+   */
+  public synchronized List<String> spawnAgents(String role, int count) {
+    role = role.toLowerCase();
+    List<String> spawned = new ArrayList<>();
+    RuntimeServices services = RuntimeServicesFactory.get();
+    String aslPath = "src/main/agents/" + role + ".asl";
+    for (int i = 0; i < count; i++) {
+      String agName = String.format("%s_%d", role, i + 1);
+      try {
+        String createdAgName = services.createAgent(agName, aslPath, null, null, null, null, null);
+        services.startAgent(createdAgName);
+        spawned.add(createdAgName);
+      } catch (Exception e) {
+        LOGGER.severe(
+            "Failed to spawn dynamic agent " + agName + " (" + role + "): " + e.getMessage());
+      }
+    }
+
+    return spawned;
+  }
+
   /** Simulation loop: at every step a new emergency may be added to the model. */
   private void generateEmergencies() {
     try {
       while (!Thread.currentThread().isInterrupted()) {
-        Thread.sleep(SIMULATION_SPEED);
+        Thread.sleep(simulationSpeed);
         if (random.nextInt(100) < SPAWN_CHANCE_PERCENTAGE
-            && testModel.getEmergencies().size() < MAX_EMERGENCIES) {
-          Optional<TestEmergency> emergency = modelGenerator.generateEmergency(testModel);
-          if (emergency.isPresent()) {
-            logger.info("Generated emergency: " + emergency);
-            testModel.addEmergency("foo"); // TODO: Replace with actual emergency object
-            informAgsEnvironmentChanged();
-          }
+            && model.getEmergencies().size() < MAX_EMERGENCIES) {
+          model
+              .spawnEmergency()
+              .ifPresent(
+                  e -> {
+                    log("Generated: " + e);
+                    informAgsEnvironmentChanged();
+                  });
+          ;
         }
       }
     } catch (InterruptedException e) {
@@ -140,53 +162,152 @@ public class EmergencyEnvironment extends Environment {
 
   @Override
   public boolean executeAction(String agName, Structure action) {
-    logger.info(agName + " executing action: " + action);
+    log(agName + " executing action: " + action);
 
     try {
-      String actionName = action.getFunctor();
-
-      if (actionName.equals("join")) {
-        return addAgent(agName, action.getTerm(0).toString());
-      }
-
-      if (actionName.equals("move_towards")) {
-        Thread.sleep(SIMULATION_SPEED);
-        return moveRescuer(
-            agName,
-            new Point(
-                Integer.parseInt(action.getTerm(0).toString()),
-                Integer.parseInt(action.getTerm(1).toString())));
-      }
-
+      return switch (action.getFunctor()) {
+        case "join" -> addAgent(agName, action.getTerm(0).toString());
+        case "move_towards" ->
+            moveRescuer(agName, new Location(intArg(action, 0), intArg(action, 1)));
+        case "start_rescue" -> startRescue(agName, intArg(action, 0));
+        default -> {
+          LOGGER.warning("Unknown or unhandled action: " + action);
+          yield false;
+        }
+      };
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return false;
+    } catch (Exception e) {
+      LOGGER.warning(agName + " failed " + action + ": " + e);
+      return false;
     }
-
-    logger.warning("Unknown or unhandled action: " + action);
-    return false;
   }
 
   /** Returns the current percepts for the specified agent. */
   @Override
   public Collection<Literal> getPercepts(String agName) {
+    if (agName.equals(ORCHESTRATOR)) {
+      return buildOrchestratorPercepts(agName);
+    }
+
+    return buildResponderPercepts(agName);
+  }
+
+  private List<Literal> buildOrchestratorPercepts(String agName) {
     List<Literal> percepts = new ArrayList<>();
-    // TODO: Populate percepts based on the agent role and thecurrent state of the environment.
-    if (agName.equals(RESCUER)) {}
+    for (Emergency e : model.getEmergencies()) {
+      percepts.add(literal("emergency", e.id(), e.position().x, e.position().y));
+    }
+    for (Responder r : model.getResponders()) {
+      String functor = r.role() == ResponderRole.RESCUER ? "rescuer" : "pilot";
+      percepts.add(literal(functor, r.name(), r.position().x, r.position().y));
+    }
+    return percepts;
+  }
+
+  private List<Literal> buildResponderPercepts(String agName) {
+    List<Literal> percepts = new ArrayList<>();
+    model
+        .getResponder(agName)
+        .ifPresent(
+            r -> {
+              percepts.add(literal("at", r.position().x, r.position().y));
+              percepts.add(literal("station", r.station().x, r.station().y));
+              model
+                  .getEmergencyAt(r.position())
+                  .ifPresent(
+                      e ->
+                          percepts.add(
+                              literal(
+                                  "emergency_info",
+                                  e.id(),
+                                  e.type().name().toLowerCase(),
+                                  e.severity().name().toLowerCase(),
+                                  e.victims())));
+            });
     return percepts;
   }
 
   // Internal actions
 
+  /**
+   * AgentSpeak Internal action: join. Adds an agent to the environment with the specified role.
+   *
+   * @param agName the name of the agent to be added
+   * @param role the role of the agent to be added
+   * @return true if the agent was successfully added, false otherwise
+   */
   private boolean addAgent(String agName, String role) {
-    // TODO: Implement agent addition logic to the model
-    logger.info("Added agent: " + agName + " with role: " + role);
+    Responder responder = model.addResponder(agName, ResponderRole.valueOf(role.toUpperCase()));
+    log(
+        responder.name()
+            + " joined at station ("
+            + responder.station().x
+            + ","
+            + responder.station().y
+            + ")");
     return true;
   }
 
-  private boolean moveRescuer(String agName, Point target) {
-    // TODO: Implement agent moving logic to the model
-    logger.info("Moved rescuer: " + agName + " towards target: " + target);
+  /**
+   * AgentSpeak Internal action: move_towards. Moves a rescuer agent towards the specified target
+   *
+   * @param agName the name of the agent to be moved
+   * @param target the target location to move towards
+   * @return true if the agent was successfully moved, false otherwise
+   * @throws InterruptedException if the thread is interrupted while moving the agent
+   */
+  private boolean moveRescuer(String agName, Location target) throws InterruptedException {
+    Thread.sleep(simulationSpeed);
+    model.moveTowards(agName, target);
     return true;
+  }
+
+  /**
+   * AgentSpeak Internal action: start_rescue. Starts the rescue operation for the specified
+   * emergency by the given agent.
+   *
+   * @param agName the name of the agent performing the rescue
+   * @param id the ID of the emergency to be rescued
+   * @return true if the rescue operation was successfully started, false otherwise
+   */
+  private boolean startRescue(String agName, int id) {
+    Optional<Emergency> emergency = model.setEmergencyStatus(id, EmergencyStatus.IN_PROGRESS);
+    emergency.ifPresent(e -> log(agName + " reached emergency " + id + ": " + e));
+    return emergency.isPresent();
+  }
+
+  // Utility methods
+
+  private void log(String message) {
+    LOGGER.info(message);
+    view.log(message);
+  }
+
+  private static int intArg(Structure action, int index) throws Exception {
+    return (int) ((NumberTerm) action.getTerm(index)).solve();
+  }
+
+  /**
+   * Creates a literal from atoms, numbers, and terms. For example, literal("at", 3, 4) will create
+   * at(3,4).
+   *
+   * @param functor the name of the literal
+   * @param args the arguments of the literal, which can be integers, terms, or atoms
+   * @return the created literal
+   */
+  private static Literal literal(String functor, Object... args) {
+    Literal literal = ASSyntax.createLiteral(functor);
+    for (Object arg : args) {
+      if (arg instanceof Integer n) {
+        literal.addTerm(ASSyntax.createNumber(n));
+      } else if (arg instanceof Term t) {
+        literal.addTerm(t);
+      } else {
+        literal.addTerm(ASSyntax.createAtom(arg.toString()));
+      }
+    }
+    return literal;
   }
 }
