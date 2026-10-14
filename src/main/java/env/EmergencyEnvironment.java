@@ -41,7 +41,6 @@ public class EmergencyEnvironment extends Environment {
   private static final String PERCEPT_AT = "at";
   private static final String PERCEPT_STATION = "station";
   private static final String PERCEPT_EMERGENCY_INFO = "emergency_info";
-  private static final String PERCEPT_RESOURCE = "resource";
 
   // Emergency generation
   private static final int ACTION_THREADS = 20;
