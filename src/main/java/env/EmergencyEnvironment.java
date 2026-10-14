@@ -171,6 +171,7 @@ public class EmergencyEnvironment extends Environment {
             moveRescuer(agName, new Location(intArg(action, 0), intArg(action, 1)));
         case "start_rescue" -> startRescue(agName, intArg(action, 0));
         case "wait_steps" -> waitSteps(intArg(action, 0));
+        case "resolve_emergency" -> resolveEmergency(agName, intArg(action, 0));
         default -> {
           LOGGER.warning("Unknown or unhandled action: " + action);
           yield false;
@@ -290,6 +291,24 @@ public class EmergencyEnvironment extends Environment {
   private boolean waitSteps(int steps) throws InterruptedException {
     Thread.sleep(simulationSpeed * steps);
     return true;
+  }
+
+  /**
+   * AgentSpeak Internal action: resolve_emergency. Resolves the specified emergency by the given
+   * agent.
+   *
+   * @param agName the name of the agent resolving the emergency
+   * @param id the ID of the emergency to be resolved
+   * @return true if the emergency was successfully resolved, false otherwise
+   */
+  private boolean resolveEmergency(String agName, int id) {
+    Optional<Emergency> emergency = model.resolveEmergency(id);
+    emergency.ifPresent(
+        e -> {
+          log("Emergency " + id + " resolved by: " + agName);
+          informAgsEnvironmentChanged();
+        });
+    return emergency.isPresent();
   }
 
   // Utility methods
