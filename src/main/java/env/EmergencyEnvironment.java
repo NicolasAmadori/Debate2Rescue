@@ -289,7 +289,9 @@ public class EmergencyEnvironment extends Environment {
    * @throws InterruptedException if the thread is interrupted while waiting
    */
   private boolean waitSteps(int steps) throws InterruptedException {
-    Thread.sleep(simulationSpeed * steps);
+    for (int i = 0; i < steps; i++) {
+      Thread.sleep(simulationSpeed);
+    }
     return true;
   }
 
