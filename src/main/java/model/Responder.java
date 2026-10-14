@@ -2,34 +2,14 @@ package model;
 
 import jason.environment.grid.Location;
 
-/**
- * An immutable responder (rescuer/pilot) on the grid.
- *
- * @param name the name of the responder
- * @param role rescuer or pilot
- * @param station the station where the responder starts and goes back to
- * @param position the current cell of the responder
- */
-public record Responder(String name, ResponderRole role, Location station, Location position) {
+/** Generic Responder (rescuer/pilot) sealed interface to access common parameters and methods. */
+public sealed interface Responder permits Rescuer, Pilot {
 
-  public Responder moveTo(Location newPosition) {
-    return new Responder(name, role, station, newPosition);
-  }
+  String name();
 
-  @Override
-  public String toString() {
-    return this.role.toString()
-        + "["
-        + this.name
-        + "]"
-        + " at ("
-        + this.position.x
-        + ","
-        + this.position.y
-        + "): from station ("
-        + this.station.x
-        + ","
-        + this.station.y
-        + ")";
-  }
+  Location station();
+
+  Location position();
+
+  Responder moveTo(Location newPosition);
 }

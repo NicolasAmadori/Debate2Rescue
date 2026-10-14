@@ -124,24 +124,37 @@ public class SimModel extends GridWorldModel {
   }
 
   /***
-   * Places a new responder on a station. Responders with the same role are spread over the stations.
+   * Places a new rescuer on a station. Rescuers are spread over the stations.
    *
-   * @param name the name of the responder
-   * @param role rescuer or pilot
-   * @return the new responder
+   * @param name the name of the rescuer
+   * @return the new rescuer
    */
-  public synchronized Responder addResponder(String name, ResponderRole role) {
-    long sameRole = responders.values().stream().filter(r -> r.role() == role).count();
-    Location station = stations.get((int) (sameRole % stations.size()));
-    Responder responder = new Responder(name, role, station, station);
-    responders.put(name, responder);
+  public synchronized Rescuer addRescuer(String name) {
+    Location station = stations.get((int) (getRescuers().size() % stations.size()));
+    Rescuer rescuer = new Rescuer(name, station, station);
+    responders.put(name, rescuer);
     updateCell(station);
-    return responder;
+    return rescuer;
+  }
+
+  /***
+   * Places a new pilot on a station. Pilots are spread over the stations.
+   *
+   * @param name the name of the pilot
+   * @return the new pilot
+   */
+  public synchronized Pilot addPilot(String name) {
+    Location station = stations.get((int) (getPilots().size() % stations.size()));
+    Resource resource = Resource.HELICOPTER; // TODO: handle more resources
+    Pilot pilot = new Pilot(name, station, station, resource);
+    responders.put(name, pilot);
+    updateCell(station);
+    return pilot;
   }
 
   /***
    * Moves a responder towards the target, first along x and then along y (manhattan path).
-   * Rescuers move by one cell, pilots fly by two.
+   * Rescuers move by one cell, pilots by two.
    *
    * @return false if the responder is not found, true otherwise
    */
@@ -153,7 +166,7 @@ public class SimModel extends GridWorldModel {
     Location from = responder.position();
     int x = from.x;
     int y = from.y;
-    int cells = responder.role() == ResponderRole.PILOT ? 2 : 1;
+    int cells = responder instanceof Pilot ? 2 : 1;
     for (int i = 0; i < cells; i++) {
       if (x < target.x) {
         x++;
@@ -190,6 +203,28 @@ public class SimModel extends GridWorldModel {
   }
 
   /***
+   * Returns a list of all rescuers currently in the simulation.
+   * @return a list of all rescuers
+   */
+  public synchronized List<Rescuer> getRescuers() {
+    return responders.values().stream()
+        .filter(Rescuer.class::isInstance)
+        .map(Rescuer.class::cast)
+        .toList();
+  }
+
+  /***
+   * Returns a list of all pilots currently in the simulation.
+   * @return a list of all pilots
+   */
+  public synchronized List<Pilot> getPilots() {
+    return responders.values().stream()
+        .filter(Pilot.class::isInstance)
+        .map(Pilot.class::cast)
+        .toList();
+  }
+
+  /***
    * Gets the responder at a given position.
    *
    * @param position
@@ -197,6 +232,26 @@ public class SimModel extends GridWorldModel {
    */
   public synchronized List<Responder> getRespondersAt(Location position) {
     return responders.values().stream().filter(r -> r.position().equals(position)).toList();
+  }
+
+  /***
+   * Gets the rescuers at a given position.
+   *
+   * @param position
+   * @return the rescuers at the position, or empty if not found.
+   */
+  public synchronized List<Rescuer> getRescuersAt(Location position) {
+    return getRescuers().stream().filter(r -> r.position().equals(position)).toList();
+  }
+
+  /***
+   * Gets the pilots at a given position.
+   *
+   * @param position
+   * @return the pilots at the position, or empty if not found.
+   */
+  public synchronized List<Pilot> getPilotsAt(Location position) {
+    return getPilots().stream().filter(r -> r.position().equals(position)).toList();
   }
 
   /***
