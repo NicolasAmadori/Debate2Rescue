@@ -38,6 +38,7 @@ class SimModelTest {
   @Test
   void testEmergencySpawnAndResolution() {
     Emergency emergency = model.spawnEmergency().orElseThrow();
+    System.out.println(emergency);
     assertFalse(model.getStations().contains(emergency.position()));
     assertEquals(EmergencyStatus.WAITING, emergency.status());
     assertEquals(1, model.getEmergencies().size());
