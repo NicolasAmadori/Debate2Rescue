@@ -6,6 +6,8 @@ public final class Config {
 
   private Config() {}
 
+  public static final String ICONS_BASE_PATH = "icons/";
+
   // To multiply with the mean between width and height of the grid
   public static final double STATION_FREQ = 0.1;
   public static final double MAX_STATION_FREQ = 0.5;
