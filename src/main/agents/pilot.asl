@@ -16,7 +16,6 @@
 	.send(R, tell, emergency_resolved(Id));
 	?station(SX, SY);
 	!go_to(SX, SY);
-	.abolish(emergency_info(_, _, _, _)); // remove possible residual unresolved emergency info
 	.send(orchestrator, tell, free(pilot)).
 
 // Already at the target location
