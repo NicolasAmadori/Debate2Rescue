@@ -114,7 +114,7 @@ public class EmergencyEnvironment extends Environment {
   private void spawnInitialAgents() {
     try {
       // Wait for the MAS environment to complete initialization
-      Thread.sleep(150);
+      Thread.sleep(200);
       spawnAgents(PILOT, config.pilotsCount());
       spawnAgents(RESCUER, config.rescuersCount());
     } catch (InterruptedException e) {
@@ -180,7 +180,7 @@ public class EmergencyEnvironment extends Environment {
         case "join_as_pilot" -> joinAsPilot(agName);
         case "move_towards" ->
             moveTowards(agName, new Location(intArg(action, 0), intArg(action, 1)));
-        case "assign" -> assign(intArg(action, 0), action.getTerm(1).toString());
+        case "assign" -> assign(action.getTerm(0).toString(), intArg(action, 1));
         case "start_rescue" -> startRescue(agName, intArg(action, 0));
         case "wait_steps" -> waitSteps(intArg(action, 0));
         case "resolve_emergency" -> resolveEmergency(agName, intArg(action, 0));
@@ -296,11 +296,11 @@ public class EmergencyEnvironment extends Environment {
   /**
    * AgentSpeak Internal action: assign. Assigns a rescuer to the specified emergency.
    *
-   * @param emergencyId the ID of the emergency to be assigned
    * @param rescuerId the ID of the rescuer being assigned to the emergency
+   * @param emergencyId the ID of the emergency to be assigned
    * @return true if the assignment was successful, false otherwise
    */
-  private boolean assign(int emergencyId, String rescuerId) {
+  private boolean assign(String rescuerId, int emergencyId) {
     Optional<Emergency> emergency = model.setEmergencyStatus(emergencyId, EmergencyStatus.ASSIGNED);
     emergency.ifPresent(e -> log("Emergency " + emergencyId + " assigned to rescuer " + rescuerId));
     return emergency.isPresent();
