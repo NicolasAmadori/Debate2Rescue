@@ -24,7 +24,7 @@
 
 //When granted a helicopter for the emergency, the agent waits for the operation to end and then goes home.
 +granted(Id, helicopter)[source(orchestrator)] <-
-	-granted(Id, helicopter)[source(orchestrator)];
+	-granted(Id, helicopter)[source(orchestrator)].
 
 +emergency_resolved(Id) <-
     -emergency_resolved(Id);
