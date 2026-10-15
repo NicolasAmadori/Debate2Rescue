@@ -5,6 +5,7 @@ import config.ConfigValues;
 import jason.asSyntax.ASSyntax;
 import jason.asSyntax.Literal;
 import jason.asSyntax.NumberTerm;
+import jason.asSyntax.StringTerm;
 import jason.asSyntax.Structure;
 import jason.asSyntax.Term;
 import jason.environment.Environment;
@@ -173,17 +174,17 @@ public class EmergencyEnvironment extends Environment {
 
   @Override
   public boolean executeAction(String agName, Structure action) {
-    log(agName + " executing action: " + action);
-
     try {
       return switch (action.getFunctor()) {
         case "join_as_rescuer" -> joinAsRescuer(agName);
         case "join_as_pilot" -> joinAsPilot(agName);
         case "move_towards" ->
             moveTowards(agName, new Location(intArg(action, 0), intArg(action, 1)));
+        case "assign" -> assign(intArg(action, 0), action.getTerm(1).toString());
         case "start_rescue" -> startRescue(agName, intArg(action, 0));
         case "wait_steps" -> waitSteps(intArg(action, 0));
         case "resolve_emergency" -> resolveEmergency(agName, intArg(action, 0));
+        case "log" -> logAgentMessage(agName, action.getTerms());
         default -> {
           LOGGER.warning("Unknown or unhandled action: " + action);
           yield false;
@@ -293,16 +294,30 @@ public class EmergencyEnvironment extends Environment {
   }
 
   /**
+   * AgentSpeak Internal action: assign. Assigns a rescuer to the specified emergency.
+   *
+   * @param emergencyId the ID of the emergency to be assigned
+   * @param rescuerId the ID of the rescuer being assigned to the emergency
+   * @return true if the assignment was successful, false otherwise
+   */
+  private boolean assign(int emergencyId, String rescuerId) {
+    Optional<Emergency> emergency = model.setEmergencyStatus(emergencyId, EmergencyStatus.ASSIGNED);
+    emergency.ifPresent(e -> log("Emergency " + emergencyId + " assigned to rescuer " + rescuerId));
+    return emergency.isPresent();
+  }
+
+  /**
    * AgentSpeak Internal action: start_rescue. Starts the rescue operation for the specified
    * emergency by the given agent.
    *
    * @param agName the name of the agent performing the rescue
-   * @param id the ID of the emergency to be rescued
+   * @param emergencyId the ID of the emergency to be rescued
    * @return true if the rescue operation was successfully started, false otherwise
    */
-  private boolean startRescue(String agName, int id) {
-    Optional<Emergency> emergency = model.setEmergencyStatus(id, EmergencyStatus.IN_PROGRESS);
-    emergency.ifPresent(e -> log(agName + " reached emergency " + id + ": " + e));
+  private boolean startRescue(String agName, int emergencyId) {
+    Optional<Emergency> emergency =
+        model.setEmergencyStatus(emergencyId, EmergencyStatus.IN_PROGRESS);
+    emergency.ifPresent(e -> log(agName + " reached emergency " + emergencyId + ": " + e));
     return emergency.isPresent();
   }
 
@@ -318,6 +333,19 @@ public class EmergencyEnvironment extends Environment {
     for (int i = 0; i < steps; i++) {
       Thread.sleep(simulationSpeed);
     }
+    return true;
+  }
+
+  /**
+   * AgentSpeak Internal action: log. Logs a message from the specified agent to both the console
+   * and the view, concatenating the provided terms.
+   *
+   * @param agName the name of the agent logging the message
+   * @param terms the terms to be concatenated and logged as the message
+   * @return true after logging the message
+   */
+  private boolean logAgentMessage(String agName, List<Term> terms) {
+    log(agName + ": " + concatTerms(terms));
     return true;
   }
 
@@ -348,6 +376,14 @@ public class EmergencyEnvironment extends Environment {
 
   private static int intArg(Structure action, int index) throws Exception {
     return (int) ((NumberTerm) action.getTerm(index)).solve();
+  }
+
+  private static String concatTerms(List<Term> terms) {
+    StringBuilder text = new StringBuilder();
+    for (Term term : terms) {
+      text.append(term instanceof StringTerm s ? s.getString() : term.toString());
+    }
+    return text.toString();
   }
 
   /**
