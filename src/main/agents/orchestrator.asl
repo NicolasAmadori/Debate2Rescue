@@ -37,6 +37,7 @@ distance(AX, AY, X, Y, D) :- D = math.abs(AX - X) + math.abs(AY - Y).
 	.findall(d(D, R), availableRescuer(R) & rescuer(R, RX, RY) & distance(RX, RY, X, Y, D), Candidates);
 	.min(Candidates, d(D, R));
 	+assigned(R, Id);
+	assign(R, Id);
 	-availableRescuer(R);
 	.print("Emergency ", Id, " assigned to ", R, " (distance ", D, ")");
 	.send(R, achieve, handle(Id, X, Y)).
