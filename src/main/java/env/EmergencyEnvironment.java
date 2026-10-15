@@ -1,5 +1,6 @@
 package env;
 
+import config.Config;
 import config.ConfigValues;
 import jason.asSyntax.ASSyntax;
 import jason.asSyntax.Literal;
@@ -44,12 +45,12 @@ public class EmergencyEnvironment extends Environment {
 
   // Emergency generation
   private static final int ACTION_THREADS = 20;
-  private static final int SPAWN_CHANCE_PERCENTAGE = 90;
-  private static final int MAX_EMERGENCIES = 20;
+  private static final int SPAWN_CHANCE_PERCENTAGE = 30;
 
   private SimModel model;
   private View view;
   private ConfigValues config;
+  private int maxEmergencies;
   private final Random random = new Random();
   private Thread generatorThread;
   private int simulationSpeed = 300; // Managed from the view
@@ -63,6 +64,7 @@ public class EmergencyEnvironment extends Environment {
   public void init(String[] args) {
     super.init(args);
     config = getConfigValues(args);
+    maxEmergencies = Config.getMaxNumEmergencies(config.gridWidth(), config.gridHeight());
 
     model = new SimModel(config.gridWidth(), config.gridHeight(), config.stationsCount());
     view = new ViewImpl(model);
@@ -153,7 +155,7 @@ public class EmergencyEnvironment extends Environment {
       while (!Thread.currentThread().isInterrupted()) {
         Thread.sleep(simulationSpeed);
         if (random.nextInt(100) < SPAWN_CHANCE_PERCENTAGE
-            && model.getEmergencies().size() < MAX_EMERGENCIES) {
+            && model.getEmergencies().size() < maxEmergencies) {
           model
               .spawnEmergency()
               .ifPresent(
