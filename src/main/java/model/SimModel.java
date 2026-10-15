@@ -264,6 +264,8 @@ public class SimModel extends GridWorldModel {
     } else {
       data[cell.x][cell.y] |= AGENT; // add agent bit, if not already present
     }
-    view.update(cell.x, cell.y);
+    if (view != null) {
+      view.update(cell.x, cell.y);
+    }
   }
 }
