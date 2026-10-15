@@ -47,5 +47,4 @@
 +!go_home <-
 	?station(X, Y);
 	!go_to(X, Y);
-	.abolish(emergency_info(_, _, _, _)); // remove possible residual unresolved emergency info
 	.send(orchestrator, tell, free(rescuer)).
