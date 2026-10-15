@@ -1,0 +1,12 @@
+MAS debate2rescue {
+
+	infrastructure: Centralised
+
+	environment: env.EmergencyEnvironment
+
+	agents:
+		orchestrator;
+
+	aslSourcePath:
+		"src/main/agents";
+}
