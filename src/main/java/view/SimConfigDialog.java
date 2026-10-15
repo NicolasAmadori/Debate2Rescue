@@ -9,12 +9,13 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
+import model.Resource;
 
 /** Asks the grid size before the simulation starts */
 public final class SimConfigDialog {
 
   // Grid values
-  private static final int MIN_SIZE = 5;
+  private static final int MIN_SIZE = 10;
   private static final int MAX_SIZE = 50;
   private static final int DEFAULT_SIZE = 20;
   // Stations values
@@ -26,7 +27,7 @@ public final class SimConfigDialog {
   private static final int RESCUERS_MAX = STATIONS_MAX * Config.MAX_RESCUER_FREQ;
   private static final int DEFAULT_RESCUERS = DEFAULT_STATIONS * Config.RESCUER_FREQ;
   // Pilots values
-  private static final int PILOTS_MIN = 1;
+  private static final int PILOTS_MIN = Resource.values().length; // At least one pilot per resource
   private static final int PILOTS_MAX = STATIONS_MAX * Config.MAX_PILOT_FREQ;
   private static final int DEFAULT_PILOTS = DEFAULT_STATIONS * Config.PILOT_FREQ;
 
@@ -78,6 +79,8 @@ public final class SimConfigDialog {
     rescuersValue = Math.max(rescuersValue, stationsValue); // At least one rescuer per station
     int pilotsValue = Math.min((int) pilots.getValue(), stationsValue * Config.MAX_PILOT_FREQ);
     pilotsValue = Math.max(pilotsValue, stationsValue); // At least one pilot per station
+    pilotsValue =
+        Math.max(pilotsValue, Resource.values().length); // At least one pilot per resource
 
     ConfigValues config =
         new ConfigValues(columnsValue, rowsValue, stationsValue, rescuersValue, pilotsValue);
