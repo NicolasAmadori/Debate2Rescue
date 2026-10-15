@@ -171,14 +171,13 @@ public class EmergencyEnvironment extends Environment {
 
   @Override
   public boolean executeAction(String agName, Structure action) {
-    log(agName + " executing action: " + action);
-
     try {
       return switch (action.getFunctor()) {
         case "join_as_rescuer" -> joinAsRescuer(agName);
         case "join_as_pilot" -> joinAsPilot(agName);
         case "move_towards" ->
             moveTowards(agName, new Location(intArg(action, 0), intArg(action, 1)));
+        case "assign" -> assign(intArg(action, 0), action.getTerm(1).toString());
         case "start_rescue" -> startRescue(agName, intArg(action, 0));
         case "wait_steps" -> waitSteps(intArg(action, 0));
         case "resolve_emergency" -> resolveEmergency(agName, intArg(action, 0));
@@ -291,16 +290,30 @@ public class EmergencyEnvironment extends Environment {
   }
 
   /**
+   * AgentSpeak Internal action: assign. Assigns a rescuer to the specified emergency.
+   *
+   * @param emergencyId the ID of the emergency to be assigned
+   * @param rescuerId the ID of the rescuer being assigned to the emergency
+   * @return true if the assignment was successful, false otherwise
+   */
+  private boolean assign(int emergencyId, String rescuerId) {
+    Optional<Emergency> emergency = model.setEmergencyStatus(emergencyId, EmergencyStatus.ASSIGNED);
+    emergency.ifPresent(e -> log("Emergency " + emergencyId + " assigned to rescuer " + rescuerId));
+    return emergency.isPresent();
+  }
+
+  /**
    * AgentSpeak Internal action: start_rescue. Starts the rescue operation for the specified
    * emergency by the given agent.
    *
    * @param agName the name of the agent performing the rescue
-   * @param id the ID of the emergency to be rescued
+   * @param emergencyId the ID of the emergency to be rescued
    * @return true if the rescue operation was successfully started, false otherwise
    */
-  private boolean startRescue(String agName, int id) {
-    Optional<Emergency> emergency = model.setEmergencyStatus(id, EmergencyStatus.IN_PROGRESS);
-    emergency.ifPresent(e -> log(agName + " reached emergency " + id + ": " + e));
+  private boolean startRescue(String agName, int emergencyId) {
+    Optional<Emergency> emergency =
+        model.setEmergencyStatus(emergencyId, EmergencyStatus.IN_PROGRESS);
+    emergency.ifPresent(e -> log(agName + " reached emergency " + emergencyId + ": " + e));
     return emergency.isPresent();
   }
 
