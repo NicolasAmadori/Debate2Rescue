@@ -29,7 +29,7 @@ public final class SimConfigDialog {
   // Pilots values
   private static final int PILOTS_MIN = Resource.values().length; // At least one pilot per resource
   private static final int PILOTS_MAX = STATIONS_MAX * Config.MAX_PILOT_FREQ;
-  private static final int DEFAULT_PILOTS = DEFAULT_STATIONS * Config.PILOT_FREQ;
+  private static final int DEFAULT_PILOTS = PILOTS_MIN;
 
   private SimConfigDialog() {}
 
