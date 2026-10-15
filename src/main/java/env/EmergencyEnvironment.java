@@ -4,6 +4,7 @@ import config.ConfigValues;
 import jason.asSyntax.ASSyntax;
 import jason.asSyntax.Literal;
 import jason.asSyntax.NumberTerm;
+import jason.asSyntax.StringTerm;
 import jason.asSyntax.Structure;
 import jason.asSyntax.Term;
 import jason.environment.Environment;
@@ -181,6 +182,7 @@ public class EmergencyEnvironment extends Environment {
         case "start_rescue" -> startRescue(agName, intArg(action, 0));
         case "wait_steps" -> waitSteps(intArg(action, 0));
         case "resolve_emergency" -> resolveEmergency(agName, intArg(action, 0));
+        case "log" -> logAgentMessage(agName, action.getTerms());
         default -> {
           LOGGER.warning("Unknown or unhandled action: " + action);
           yield false;
@@ -333,6 +335,19 @@ public class EmergencyEnvironment extends Environment {
   }
 
   /**
+   * AgentSpeak Internal action: log. Logs a message from the specified agent to both the console
+   * and the view, concatenating the provided terms.
+   *
+   * @param agName the name of the agent logging the message
+   * @param terms the terms to be concatenated and logged as the message
+   * @return true after logging the message
+   */
+  private boolean logAgentMessage(String agName, List<Term> terms) {
+    log(agName + ": " + concatTerms(terms));
+    return true;
+  }
+
+  /**
    * AgentSpeak Internal action: resolve_emergency. Resolves the specified emergency by the given
    * agent.
    *
@@ -359,6 +374,14 @@ public class EmergencyEnvironment extends Environment {
 
   private static int intArg(Structure action, int index) throws Exception {
     return (int) ((NumberTerm) action.getTerm(index)).solve();
+  }
+
+  private static String concatTerms(List<Term> terms) {
+    StringBuilder text = new StringBuilder();
+    for (Term term : terms) {
+      text.append(term instanceof StringTerm s ? s.getString() : term.toString());
+    }
+    return text.toString();
   }
 
   /**
