@@ -25,16 +25,10 @@
 //When granted a helicopter for the emergency, the agent waits for the operation to end and then goes home.
 +granted(Id, helicopter)[source(orchestrator)] <-
 	-granted(Id, helicopter)[source(orchestrator)];
-	!wait_emergency_ending(Id);
-	!go_home.
 
-// Waiting for the emergency to end before proceeding.
-+!wait_emergency_ending(Id) : emergency_info(Id, _, _, _) <-
-	wait_steps(1);
-	!wait_emergency_ending(Id).
-
-// When the emergency has ended, the agent stops waiting and can go home.
-+!wait_emergency_ending(_).
++emergency_resolved(Id) <-
+    -emergency_resolved(Id);
+    !go_home.
 
 // If the agent is already at the target location, do nothing.
 +!go_to(X, Y)[source(self)] : at(X, Y).
