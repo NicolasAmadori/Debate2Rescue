@@ -64,11 +64,14 @@ distance(AX, AY, X, Y, D) :- D = math.abs(AX - X) + math.abs(AY - Y).
 @request[atomic]
 +request(Id, RT, [T, S, V]) <-
 	+window(RT);
+	.print("Window opened for ", RT, " by request ", Id);
 	!!close_window(RT).
 
 +!close_window(RT) : window(RT) & window_steps(S) <-
 	wait_steps(S);
 	-window(RT);
+	.findall(Id, request(Id, RT, _), Requests);
+	.print("Window closed for ", RT, ", requests: ", Requests);
 	!deliberate(RT).
 
 @deliberate[atomic]
