@@ -19,6 +19,7 @@ public class SimModel extends GridWorldModel {
   private final Map<String, Responder> responders = new LinkedHashMap<>();
   private final EmergencyType[] emergencyTypes = EmergencyType.values();
   private final Severity[] severities = Severity.values();
+  private final Resource[] resources = Resource.values();
 
   private int nextEmergencyId = 1;
 
@@ -144,8 +145,9 @@ public class SimModel extends GridWorldModel {
    * @return the new pilot
    */
   public synchronized Pilot addPilot(String name) {
-    Location station = stations.get((int) (getPilots().size() % stations.size()));
-    Resource resource = Resource.HELICOPTER; // TODO: handle more resources
+    int pilotsSize = getPilots().size();
+    Location station = stations.get((int) (pilotsSize % stations.size()));
+    Resource resource = resources[(int) (pilotsSize % resources.length)];
     Pilot pilot = new Pilot(name, station, station, resource);
     responders.put(name, pilot);
     updateCell(station);
