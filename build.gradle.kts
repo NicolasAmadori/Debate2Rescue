@@ -34,6 +34,9 @@ sourceSets {
     main {
         resources {
             srcDir("src/main/agents")
+            srcDir(".")
+            include("*.asl")
+            include("icons/**")
         }
     }
 }
