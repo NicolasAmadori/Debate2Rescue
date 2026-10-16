@@ -37,6 +37,7 @@ sourceSets {
             srcDir(".")
             include("*.asl")
             include("icons/**")
+            include("arg/**")
         }
     }
 }
