@@ -186,6 +186,19 @@ class EmergencyEnvironmentTest {
         rescuerPercepts.stream().anyMatch(p -> p.getFunctor().equals("emergency_info")),
         "Rescuer at emergency location should perceive 'emergency_info'");
 
+    // The percept must expose the emergency type so the rescuer can pick the resource
+    Literal expectedInfo =
+        Literal.parseLiteral(
+            String.format(
+                "emergency_info(%d,%s,%d,%d)",
+                id,
+                emergency.type().name().toLowerCase(),
+                emergency.severity().esi,
+                emergency.victims()));
+    assertTrue(
+        rescuerPercepts.stream().anyMatch(p -> p.equals(expectedInfo)),
+        "Rescuer should perceive the emergency type name");
+
     // Test start_rescue
     Structure startRescueValid = (Structure) Literal.parseLiteral("start_rescue(" + id + ")");
     Structure startRescueInvalid = (Structure) Literal.parseLiteral("start_rescue(999)");
