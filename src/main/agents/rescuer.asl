@@ -2,6 +2,19 @@
 
 !start.
 
+/* Emergency type to required resource mapping */
+
+resource_for(fire, fire_truck).
+resource_for(medical, ambulance).
+resource_for(hostage, police_car).
+resource_for(aggression, police_car).
+resource_for(hazmat, hazmat_team).
+resource_for(bomb, bomb_squad).
+resource_for(armed_person, army).
+resource_for(disaster, excavator).
+resource_for(missing, police_helicopter).
+resource_for(evacuation, helicopter).
+
 /* Plans */
 
 // Plan for starting the agent and joining the model and notifying the orchestrator.
@@ -17,14 +30,17 @@
 	?emergency_info(Id, Type, Severity, Victims);
 	!evaluate(Id, Type, Severity, Victims).
 
-// Requesting a helicopter for the emergency.
-// TODO: change this to request other types of resources if needed.
+// Requesting the resource required by the emergency type.
++!evaluate(Id, Type, Severity, Victims) : resource_for(Type, Resource) <-
+	.send(orchestrator, tell, request(Id, Resource, [Type, Severity, Victims])).
+
+// Fallback: if the emergency type has no mapping, request a helicopter.
 +!evaluate(Id, Type, Severity, Victims) <-
 	.send(orchestrator, tell, request(Id, helicopter, [Type, Severity, Victims])).
 
-//When granted a helicopter for the emergency, the agent waits for the operation to end and then goes home.
-+granted(Id, helicopter)[source(orchestrator)] <-
-	-granted(Id, helicopter)[source(orchestrator)].
+// When granted a resource for the emergency, the agent waits for the operation to end and then goes home.
++granted(Id, Resource)[source(orchestrator)] <-
+	-granted(Id, Resource)[source(orchestrator)].
 
 +emergency_resolved(Id) <-
     -emergency_resolved(Id);
