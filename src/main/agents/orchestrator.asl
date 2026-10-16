@@ -3,6 +3,8 @@
 
 */
 
+// steps for the request collection
+window_steps(5).
 
 /* Rules */
 
@@ -29,7 +31,7 @@ distance(AX, AY, X, Y, D) :- D = math.abs(AX - X) + math.abs(AY - Y).
 +free(pilot)[source(P)] : pilot(P, RT, _, _) <-
 	-free(pilot)[source(P)];
 	+availableResource(RT, P);
-	!assign_resource.
+	!deliberate(RT).
 
 // atomic so two emergencies arriving together cannot get the same rescuer
 @assign[atomic]
@@ -57,10 +59,27 @@ distance(AX, AY, X, Y, D) :- D = math.abs(AX - X) + math.abs(AY - Y).
 		!assign(Id, X, Y);
 	}.
 
-// a rescuer asks for a resource, for now the first one asking gets it
-// Sends type, severity and victims count
++request(_, RT, _) : window(RT).
+
+@request[atomic]
 +request(Id, RT, [T, S, V]) <-
-	!grant(Id, RT).
+	+window(RT);
+	.print("Window opened for ", RT, " by request ", Id);
+	!!close_window(RT).
+
++!close_window(RT) : window(RT) & window_steps(S) <-
+	wait_steps(S);
+	-window(RT);
+	.findall(Id, request(Id, RT, _), Requests);
+	.print("Window closed for ", RT, ", requests: ", Requests);
+	!deliberate(RT).
+
+@deliberate[atomic]
++!deliberate(RT) : not window(RT) & availableResource(RT, _) <-
+	!assign_resource(RT).
+
+// fallback
++!deliberate(_).
 
 // atomic so two requests arriving together cannot get the same pilot
 @grant[atomic]
@@ -79,9 +98,10 @@ distance(AX, AY, X, Y, D) :- D = math.abs(AX - X) + math.abs(AY - Y).
 	.print("No free resource for emergency ", Id, ", the request will wait").
 
 @assign_resource[atomic]
-+!assign_resource <-
++!assign_resource(RT) <-
 	.findall(Id, request(Id, RT, [_, _, _]) & availableResource(RT, _), Waiting);
 	if (Waiting \== []) {
 		.min(Waiting, Id);
-		!grant(Id, _);
+		!grant(Id, RT);
+		!assign_resource(RT);
 	}.
