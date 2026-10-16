@@ -245,7 +245,7 @@ public class EmergencyEnvironment extends Environment {
                               literal(
                                   PERCEPT_EMERGENCY_INFO,
                                   e.id(),
-                                  e.type().colorCode,
+                                  e.type().name().toLowerCase(),
                                   e.severity().esi,
                                   e.victims())));
             });
