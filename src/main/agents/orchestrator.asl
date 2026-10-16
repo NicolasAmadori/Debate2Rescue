@@ -1,5 +1,5 @@
 /*  Recap:
-	Percepts: emergency(Id, X, Y), rescuer(R, X, Y), pilot(P, X, Y)
+	Percepts: emergency(Id, X, Y), rescuer(R, X, Y), pilot(P, RT, X, Y)
 
 */
 
@@ -17,7 +17,7 @@ distance(AX, AY, X, Y, D) :- D = math.abs(AX - X) + math.abs(AY - Y).
 -emergency(Id, _, _) <-
 	.abolish(assigned(_, Id));
 	.abolish(granted(_, Id));
-	.abolish(request(Id, _));
+	.abolish(request(Id, _, _));
 	.print("Emergency ", Id, " is over").
 
 // a rescuer is free again, give it a waiting emergency, if any
@@ -26,9 +26,9 @@ distance(AX, AY, X, Y, D) :- D = math.abs(AX - X) + math.abs(AY - Y).
 	+availableRescuer(R);
 	!assign_waiting.
 
-+free(pilot)[source(P)] <-
++free(pilot)[source(P)] : pilot(P, RT, _, _) <-
 	-free(pilot)[source(P)];
-	+availablePilot(P);
+	+availableResource(RT, P);
 	!assign_resource.
 
 // atomic so two emergencies arriving together cannot get the same rescuer
@@ -37,6 +37,7 @@ distance(AX, AY, X, Y, D) :- D = math.abs(AX - X) + math.abs(AY - Y).
 	.findall(d(D, R), availableRescuer(R) & rescuer(R, RX, RY) & distance(RX, RY, X, Y, D), Candidates);
 	.min(Candidates, d(D, R));
 	+assigned(R, Id);
+	assign(R, Id);
 	-availableRescuer(R);
 	.print("Emergency ", Id, " assigned to ", R, " (distance ", D, ")");
 	.send(R, achieve, handle(Id, X, Y)).
@@ -56,30 +57,31 @@ distance(AX, AY, X, Y, D) :- D = math.abs(AX - X) + math.abs(AY - Y).
 		!assign(Id, X, Y);
 	}.
 
-// a rescuer asks for a helicopter, for now the first one asking gets it
-+request(Id, helicopter) <-
-	!grant(Id).
+// a rescuer asks for a resource, for now the first one asking gets it
+// Sends type, severity and victims count
++request(Id, RT, [T, S, V]) <-
+	!grant(Id, RT).
 
 // atomic so two requests arriving together cannot get the same pilot
 @grant[atomic]
-+!grant(Id) : request(Id, helicopter)[source(R)] & availablePilot(_) & emergency(Id, X, Y) <-
-	.findall(d(D, P), availablePilot(P) & pilot(P, PX, PY) & distance(PX, PY, X, Y, D), Candidates);
++!grant(Id, RT) : request(Id, RT, [_, _ ,_])[source(R)] & availableResource(RT, _) & emergency(Id, X, Y) <-
+	.findall(d(D, P), availableResource(RT, P) & pilot(P, RT, PX, PY) & distance(PX, PY, X, Y, D), Candidates);
 	.min(Candidates, d(D, P));
-	-request(Id, helicopter)[source(R)];
-	-availablePilot(P);
+	-request(Id, RT, [_, _, _])[source(R)];
+	-availableResource(RT, P);
 	+granted(P, Id);
-	.print("Helicopter ", P, " granted to ", R, " for emergency ", Id, " (distance ", D, ")");
-	.send(R, tell, granted(Id, helicopter));
-	.send(P, achieve, go_to(X, Y)).
+	.print("Resource type ", RT, " with pilot ", P, " granted to ", R, " for emergency ", Id, " (distance ", D, ")");
+	.send(R, tell, granted(Id, RT));
+	.send(P, achieve, move_to_emergency(Id, R, X, Y)).
 
 // no free pilot, the request stays in the belief base until one is free
-+!grant(Id) <-
-	.print("No free helicopter for emergency ", Id, ", the request will wait").
++!grant(Id, RT) <-
+	.print("No free resource for emergency ", Id, ", the request will wait").
 
 @assign_resource[atomic]
 +!assign_resource <-
-	.findall(Id, request(Id, helicopter), Waiting);
+	.findall(Id, request(Id, RT, [_, _, _]) & availableResource(RT, _), Waiting);
 	if (Waiting \== []) {
 		.min(Waiting, Id);
-		!grant(Id);
+		!grant(Id, _);
 	}.
