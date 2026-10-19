@@ -28,8 +28,8 @@ public class Debate {
    */
   public void addClaim(int emergency, int severity, int victims) {
     facts.add("contender(" + emergency + ").");
-    facts.add("severity(" + severity + ").");
-    facts.add("victims(" + victims + ").");
+    facts.add("severity(" + emergency + ", " + severity + ").");
+    facts.add("victims(" + emergency + ", " + victims + ").");
   }
 
   /**
