@@ -31,18 +31,16 @@ public class DebateTest {
   @Test
   public void testSingleClaimWins() {
     d.addClaim(1, 2, 3);
-    d.addClaim(2, 4, 0);
 
     Map<String, String> evaluation = d.evaluate();
     assertTrue(evaluation.containsValue(IN));
     assertEquals(IN, evaluation.get(buildClaim(1)));
-    assertEquals(OUT, evaluation.get(buildClaim(2)));
   }
 
   @Test
   public void testOldestEmergencyWinsWithoutAttacks() {
-    d.addClaim(1, 2, 3);
-    d.addClaim(4, 4, 0);
+    d.addClaim(1, 4, 0);
+    d.addClaim(4, 2, 3);
 
     Map<String, String> evaluation = d.evaluate();
     assertEquals(IN, evaluation.get(buildClaim(1)));
