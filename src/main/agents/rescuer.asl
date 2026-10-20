@@ -37,16 +37,16 @@ stronger(R1, R2) :- strength(R1, S1) & strength(R2, S2) & S1 > S2.
 +!handle(Id, X, Y)[source(orchestrator)] <-
 	!go_to(X, Y);
 	start_rescue(Id);
-	?emergency_info(Id, Type, Severity, Victims);
-	!evaluate(Id, Type, Severity, Victims).
+	?emergency_info(Id, Type, Severity, Victims, Trapped, Escalating);
+	!evaluate(Id, Type, Severity, Victims, Trapped, Escalating).
 
 // Requesting the resource required by the emergency type.
-+!evaluate(Id, Type, Severity, Victims) : resource_for(Type, Resource) <-
-	.send(orchestrator, tell, request(Id, Resource, [Type, Severity, Victims])).
++!evaluate(Id, Type, Severity, Victims, Trapped, Escalating) : resource_for(Type, Resource) <-
+	.send(orchestrator, tell, request(Id, Resource, [Type, Severity, Victims, Trapped, Escalating])).
 
 // Fallback: if the emergency type has no mapping, request a helicopter.
-+!evaluate(Id, Type, Severity, Victims) <-
-	.send(orchestrator, tell, request(Id, helicopter, [Type, Severity, Victims])).
++!evaluate(Id, Type, Severity, Victims, Trapped, Escalating) <-
+	.send(orchestrator, tell, request(Id, helicopter, [Type, Severity, Victims, Trapped, Escalating])).
 
 // When granted a resource for the emergency, the agent waits for the operation to end and then goes home.
 +granted(Id, Resource)[source(orchestrator)] <-
