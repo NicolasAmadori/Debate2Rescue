@@ -1,5 +1,6 @@
 package model;
 
+import config.Config;
 import jason.environment.grid.GridWorldModel;
 import jason.environment.grid.Location;
 import java.util.ArrayList;
@@ -75,6 +76,8 @@ public class SimModel extends GridWorldModel {
             emergencyTypes[random.nextInt(emergencyTypes.length)],
             severities[random.nextInt(severities.length)],
             random.nextInt(MAX_VICTIMS) + 1,
+            random.nextDouble() < Config.TRAPPED_PROB,
+            random.nextDouble() < Config.ESCALATING_PROB,
             EmergencyStatus.WAITING);
     emergencies.put(emergency.id(), emergency);
     add(EMERGENCY, pos);

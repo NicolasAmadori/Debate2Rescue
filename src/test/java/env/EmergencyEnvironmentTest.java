@@ -190,11 +190,13 @@ class EmergencyEnvironmentTest {
     Literal expectedInfo =
         Literal.parseLiteral(
             String.format(
-                "emergency_info(%d,%s,%d,%d)",
+                "emergency_info(%d,%s,%d,%d,%b,%b)",
                 id,
                 emergency.type().name().toLowerCase(),
                 emergency.severity().esi,
-                emergency.victims()));
+                emergency.victims(),
+                emergency.trapped(),
+                emergency.escalating()));
     assertTrue(
         rescuerPercepts.stream().anyMatch(p -> p.equals(expectedInfo)),
         "Rescuer should perceive the emergency type name");
