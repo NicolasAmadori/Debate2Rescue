@@ -61,4 +61,45 @@ public class DebateTest {
     assertEquals(IN, evaluation.get(buildClaim(1)));
     assertEquals(OUT, evaluation.get(buildClaim(4)));
   }
+
+  @Test
+  public void testOldestOfThreeContendersWins() {
+    d.addClaim(5, 2, 1, false, false, 0);
+    d.addClaim(2, 4, 3, true, true, 5);
+    d.addClaim(8, 1, 9, false, false, 0);
+
+    Map<String, String> evaluation = d.evaluate();
+
+    assertEquals(IN, evaluation.get(buildClaim(2)));
+    assertEquals(OUT, evaluation.get(buildClaim(5)));
+    assertEquals(OUT, evaluation.get(buildClaim(8)));
+  }
+
+  @Test
+  public void testAttackAndRejectFactsAreAddedToTheory() {
+    d.addClaim(1, 2, 3, false, false, 0);
+    d.addClaim(2, 4, 0, false, false, 0);
+
+    d.addAttack(7, 3, 5, "severity");
+    d.addReject(8, 2, 4, "waiting");
+
+    String theory = d.theory();
+
+    assertTrue(theory.contains("attack(7, 3, 5, severity)."));
+    assertTrue(theory.contains("reject(8, 2, 4, waiting)."));
+  }
+
+  @Test
+  public void testTheoryWithAttackAndRejectFactsIsEvaluable() {
+    d.addClaim(1, 4, 0, false, false, 0);
+    d.addClaim(2, 2, 3, true, true, 7);
+
+    d.addAttack(3, 1, 2, "victims");
+    d.addReject(4, 1, 2, "severity");
+
+    Map<String, String> evaluation = d.evaluate();
+
+    assertEquals(IN, evaluation.get(buildClaim(1)));
+    assertEquals(OUT, evaluation.get(buildClaim(2)));
+  }
 }

@@ -20,10 +20,15 @@ public class deliberate extends DefaultInternalAction {
     Debate debate = new Debate();
     for (Term t : (ListTerm) args[0]) {
       Literal move = (Literal) t;
+      int id = intArg(move, 0);
       int author = intArg(move, 1);
       Literal content = (Literal) move.getTerm(2);
       switch (content.getFunctor()) {
         case "claim" -> addClaim(debate, author, (ListTerm) content.getTerm(0));
+        case "attack" ->
+            debate.addAttack(id, author, intArg(content, 0), content.getTerm(1).toString());
+        case "reject" ->
+            debate.addReject(id, author, intArg(content, 0), content.getTerm(1).toString());
         default -> LOGGER.warning("Unknown move: " + move);
       }
     }
