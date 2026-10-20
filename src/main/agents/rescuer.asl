@@ -1,9 +1,6 @@
-/* Initial goals */
-
-!start.
+/* Initial beliefs */
 
 /* Emergency type to required resource mapping */
-
 resource_for(fire, fire_truck).
 resource_for(medical, ambulance).
 resource_for(hostage, police_car).
@@ -14,6 +11,19 @@ resource_for(armed_person, army).
 resource_for(disaster, excavator).
 resource_for(missing, police_helicopter).
 resource_for(evacuation, helicopter).
+
+/* Reasons hierarchy, the higher the strength value, the stronger the reason */
+strength(waiting, 5).
+strength(severity, 4).
+strength(trapped, 3).
+strength(escalating, 2).
+strength(victims, 1).
+
+stronger(R1, R2) :- strength(R1, S1) & strength(R2, S2) & S1 > S2.
+
+/* Initial goals */
+
+!start.
 
 /* Plans */
 
