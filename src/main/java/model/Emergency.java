@@ -18,6 +18,8 @@ public record Emergency(
     EmergencyType type,
     Severity severity,
     int victims,
+    boolean trapped,
+    boolean escalating,
     EmergencyStatus status) {
 
   /***
@@ -26,7 +28,7 @@ public record Emergency(
    * @return a new Emergency with the same properties but a different status
    */
   public Emergency newStatus(EmergencyStatus newStatus) {
-    return new Emergency(id, position, type, severity, victims, newStatus);
+    return new Emergency(id, position, type, severity, victims, trapped, escalating, newStatus);
   }
 
   @Override
@@ -45,6 +47,8 @@ public record Emergency(
         + this.severity.esi
         + "], n."
         + this.victims
-        + " victims";
+        + " victims"
+        + (this.trapped ? " [TRAPPED]" : "")
+        + (this.escalating ? " [ESCALATING]" : "");
   }
 }
