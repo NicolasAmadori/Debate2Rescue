@@ -60,7 +60,7 @@ public class Debate {
     if (graphs.hasNext()) {
       for (LabelledArgument arg : graphs.next().getLabellings()) {
         String rule = arg.getArgument().getTopRule();
-        if (rule.startsWith("claim(") || rule.startsWith("move(")) {
+        if (rule.startsWith("claim(") || rule.startsWith("objection(")) {
           labels.put(rule, arg.getLabel());
         }
       }
