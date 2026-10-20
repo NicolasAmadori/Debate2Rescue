@@ -12,14 +12,24 @@ resource_for(disaster, excavator).
 resource_for(missing, police_helicopter).
 resource_for(evacuation, helicopter).
 
-/* Reasons hierarchy, the higher the strength value, the stronger the reason */
+// Reasons hierarchy, the higher the strength value, the stronger the reason
 strength(waiting, 5).
 strength(severity, 4).
 strength(trapped, 3).
 strength(escalating, 2).
 strength(victims, 1).
 
+/* Rules */
+
 stronger(R1, R2) :- strength(R1, S1) & strength(R2, S2) & S1 > S2.
+
+// Reason R puts emergency F1 ahead of F2.
+// The order must match the priority of the reasons hierarchy.
+beats(waiting, F1, F2) :- .member(waiting(W1), F1) & .member(waiting(W2), F2) & W1 > W2.
+beats(severity, F1, F2) :- .member(severity(S1), F1) & .member(severity(S2), F2) & S1 < S2.
+beats(trapped, F1, F2) :- .member(trapped, F1) & not .member(trapped, F2).
+beats(escalating, F1, F2) :- .member(escalating, F1) & not .member(escalating, F2).
+beats(victims, F1, F2) :- .member(victims(V1), F1) & .member(victims(V2), F2) & V1 > V2.
 
 /* Initial goals */
 
