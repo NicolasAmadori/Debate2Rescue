@@ -39,17 +39,24 @@ public class deliberate extends DefaultInternalAction {
   }
 
   private static void addClaim(Debate debate, int emergency, ListTerm facts) throws Exception {
-    int severity = 0;
+    // Low severity would have high value, so a high number should be the default
+    int severity = 999;
     int victims = 0;
+    boolean trapped = false;
+    boolean escalating = false;
+    int waiting = 0;
     for (Term t : facts) {
       Literal fact = (Literal) t;
       switch (fact.getFunctor()) {
         case "severity" -> severity = intArg(fact, 0);
         case "victims" -> victims = intArg(fact, 0);
+        case "trapped" -> trapped = true;
+        case "escalating" -> escalating = true;
+        case "waiting" -> waiting = intArg(fact, 0);
         default -> LOGGER.warning("Unknown fact in claim: " + fact);
       }
     }
-    debate.addClaim(emergency, severity, victims);
+    debate.addClaim(emergency, severity, victims, trapped, escalating, waiting);
   }
 
   private static int intArg(Literal l, int index) throws Exception {

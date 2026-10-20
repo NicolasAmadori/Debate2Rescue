@@ -25,11 +25,22 @@ public class Debate {
    * @param emergency the emergency id
    * @param severity the ESI of the emergency
    * @param victims number of victims
+   * @param trapped whether the emergency is trapped
+   * @param escalating whether the emergency is escalating
+   * @param waiting the waiting time for the emergency
    */
-  public void addClaim(int emergency, int severity, int victims) {
+  public void addClaim(
+      int emergency, int severity, int victims, boolean trapped, boolean escalating, int waiting) {
     facts.add("contender(" + emergency + ").");
     facts.add("severity(" + emergency + ", " + severity + ").");
     facts.add("victims(" + emergency + ", " + victims + ").");
+    if (trapped) {
+      facts.add("trapped(" + emergency + ").");
+    }
+    if (escalating) {
+      facts.add("escalating(" + emergency + ").");
+    }
+    facts.add("waiting(" + emergency + ", " + waiting + ").");
   }
 
   /**
