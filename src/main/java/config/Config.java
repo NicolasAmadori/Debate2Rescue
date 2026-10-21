@@ -16,6 +16,8 @@ public final class Config {
   public static final double STATION_FREQ = 0.1;
   public static final double MAX_STATION_FREQ = 0.5;
   public static final double MAX_EMERGENCY_FREQ = 0.5;
+  public static final double OBSTACLE_FREQ = 0.25;
+  public static final double MAX_OBSTACLE_FREQ = 1.0;
 
   // To multiply with the number of stations
   public static final int RESCUER_FREQ = 1;
@@ -31,8 +33,16 @@ public final class Config {
     return (int) Math.round(mean(width, height) * STATION_FREQ);
   }
 
+  public static int getNumObstacles(int width, int height) {
+    return (int) Math.round(mean(width, height) * OBSTACLE_FREQ);
+  }
+
   public static int getMaxNumStations(int width, int height) {
     return (int) Math.round(mean(width, height) * MAX_STATION_FREQ);
+  }
+
+  public static int getMaxNumObstacles(int width, int height) {
+    return (int) Math.round(mean(width, height) * MAX_OBSTACLE_FREQ);
   }
 
   public static int getMaxNumEmergencies(int width, int height) {

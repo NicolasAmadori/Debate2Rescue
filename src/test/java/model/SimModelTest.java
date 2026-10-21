@@ -10,11 +10,12 @@ import org.junit.jupiter.api.Test;
 
 class SimModelTest {
 
-  private SimModel model = new SimModel(20, 20, 2);
+  private SimModel model = new SimModel(20, 20, 2, 5);
 
   @Test
   void testInitialSetting() {
     assertEquals(2, model.getStations().size());
+    assertEquals(5, model.getObstacles().size());
   }
 
   @Test

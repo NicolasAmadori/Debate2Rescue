@@ -16,6 +16,7 @@ public class SimModel extends GridWorldModel {
   public static final int MAX_VICTIMS = 15;
 
   private final List<Location> stations;
+  private final List<Location> obstacles;
   private final Map<Integer, Emergency> emergencies = new LinkedHashMap<>();
   private final Map<String, Responder> responders = new LinkedHashMap<>();
   private final EmergencyType[] emergencyTypes = EmergencyType.values();
@@ -24,13 +25,19 @@ public class SimModel extends GridWorldModel {
 
   private int nextEmergencyId = 1;
 
-  public SimModel(int width, int height, int numStations) {
+  public SimModel(int width, int height, int numStations, int numObstacles) {
     super(width, height, 0);
     stations = new ArrayList<>();
     for (int i = 0; i < numStations; i++) {
       Location pos = getFreePos(STATION);
       stations.add(pos);
       add(STATION, pos);
+    }
+    obstacles = new ArrayList<>();
+    for (int i = 0; i < numObstacles; i++) {
+      Location pos = getFreePos(OBSTACLE | STATION);
+      obstacles.add(pos);
+      add(OBSTACLE, pos);
     }
   }
 
@@ -40,6 +47,14 @@ public class SimModel extends GridWorldModel {
    */
   public List<Location> getStations() {
     return List.copyOf(stations);
+  }
+
+  /***
+   * Getter method
+   * @return the list of locations of the obstacles on the grid.
+   */
+  public List<Location> getObstacles() {
+    return List.copyOf(obstacles);
   }
 
   /***

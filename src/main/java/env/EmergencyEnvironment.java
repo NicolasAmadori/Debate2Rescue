@@ -67,7 +67,12 @@ public class EmergencyEnvironment extends Environment {
     config = getConfigValues(args);
     maxEmergencies = Config.getMaxNumEmergencies(config.gridWidth(), config.gridHeight());
 
-    model = new SimModel(config.gridWidth(), config.gridHeight(), config.stationsCount());
+    model =
+        new SimModel(
+            config.gridWidth(),
+            config.gridHeight(),
+            config.stationsCount(),
+            config.obstaclesCount());
     view = new ViewImpl(model);
     view.setOnSpeedChange(speed -> simulationSpeed = speed);
 
@@ -92,14 +97,15 @@ public class EmergencyEnvironment extends Environment {
 
   private ConfigValues getConfigValues(String[] args) {
     ConfigValues configValues;
-    if (args.length == 5) {
+    if (args.length == 6) {
       configValues =
           new ConfigValues(
               Integer.parseInt(args[0]),
               Integer.parseInt(args[1]),
               Integer.parseInt(args[2]),
               Integer.parseInt(args[3]),
-              Integer.parseInt(args[4]));
+              Integer.parseInt(args[4]),
+              Integer.parseInt(args[5]));
     } else {
       Optional<ConfigValues> chosen = SimConfigDialog.ask();
       if (chosen.isEmpty()) {
