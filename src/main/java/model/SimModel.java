@@ -19,6 +19,7 @@ public class SimModel extends GridWorldModel {
   private final List<Location> obstacles;
   private final Map<Integer, Emergency> emergencies = new LinkedHashMap<>();
   private final Map<String, Responder> responders = new LinkedHashMap<>();
+  private final PathFinder pathFinder;
   private final EmergencyType[] emergencyTypes = EmergencyType.values();
   private final Severity[] severities = Severity.values();
   private final Resource[] resources = Resource.values();
@@ -27,6 +28,7 @@ public class SimModel extends GridWorldModel {
 
   public SimModel(int width, int height, int numStations, int numObstacles) {
     super(width, height, 0);
+    this.pathFinder = new PathFinder(this);
     stations = new ArrayList<>();
     for (int i = 0; i < numStations; i++) {
       Location pos = getFreePos(STATION);
@@ -70,7 +72,7 @@ public class SimModel extends GridWorldModel {
    * @return a free grid position if present, or empty if there are no free cells left.
    */
   public synchronized Optional<Location> getFreePosition() {
-    Location pos = getFreePos(STATION | EMERGENCY | AGENT);
+    Location pos = getFreePos(OBSTACLE | STATION | EMERGENCY | AGENT);
     return Optional.ofNullable(pos);
   }
 
@@ -80,7 +82,7 @@ public class SimModel extends GridWorldModel {
    * @return the new emergency, or empty if there are no free cells left.
    */
   public synchronized Optional<Emergency> spawnEmergency() {
-    Location pos = getFreePos(STATION | EMERGENCY);
+    Location pos = getFreePos(OBSTACLE | STATION | EMERGENCY);
     if (pos == null) {
       return Optional.empty();
     }
@@ -102,8 +104,8 @@ public class SimModel extends GridWorldModel {
   /***
    * Sets the status of an emergency.
    *
-   * @param emergencyId
-   * @param newStatus
+   * @param emergencyId the emergency identifier
+   * @param newStatus the new status
    * @return the updated emergency, or empty if not found.
    */
   public synchronized Optional<Emergency> setEmergencyStatus(
@@ -121,7 +123,7 @@ public class SimModel extends GridWorldModel {
   /***
    * Gets the emergency at a given position.
    *
-   * @param position
+   * @param position the location to check
    * @return the emergency at the position, or empty if not found.
    */
   public synchronized Optional<Emergency> getEmergencyAt(Location position) {
@@ -130,7 +132,7 @@ public class SimModel extends GridWorldModel {
 
   /***
    * Declares an emergency over and removes it from the grid.
-   * @param emergencyId
+   * @param emergencyId the emergency identifier
    * @return the removed emergency, or empty if it does not exist.
    */
   public synchronized Optional<Emergency> resolveEmergency(int emergencyId) {
@@ -173,9 +175,10 @@ public class SimModel extends GridWorldModel {
   }
 
   /***
-   * Moves a responder towards the target, first along x and then along y (manhattan path).
+   * Moves a responder towards the target following a Bresenham line and avoiding obstacles.
    * Rescuers move by one cell, pilots by two.
-   *
+   * @param name the name of the responder
+   * @param target the target location
    * @return false if the responder is not found, true otherwise
    */
   public synchronized boolean moveTowards(String name, Location target) {
@@ -184,24 +187,12 @@ public class SimModel extends GridWorldModel {
       return false;
     }
     Location from = responder.position();
-    int x = from.x;
-    int y = from.y;
-    int cells = responder instanceof Pilot ? 2 : 1;
-    for (int i = 0; i < cells; i++) {
-      if (x < target.x) {
-        x++;
-      } else if (x > target.x) {
-        x--;
-      } else if (y < target.y) {
-        y++;
-      } else if (y > target.y) {
-        y--;
-      }
+    Location to = pathFinder.nextPosition(responder, target);
+    if (!to.equals(from)) {
+      responders.put(name, responder.moveTo(to));
+      updateCell(from);
+      updateCell(to);
     }
-    Location to = new Location(x, y);
-    responders.put(name, responder.moveTo(to));
-    updateCell(from);
-    updateCell(to);
     return true;
   }
 
