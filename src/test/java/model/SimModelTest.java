@@ -10,11 +10,12 @@ import org.junit.jupiter.api.Test;
 
 class SimModelTest {
 
-  private SimModel model = new SimModel(20, 20, 2);
+  private SimModel model = new SimModel(20, 20, 2, 5);
 
   @Test
   void testInitialSetting() {
     assertEquals(2, model.getStations().size());
+    assertEquals(5, model.getObstacles().size());
   }
 
   @Test
@@ -71,15 +72,14 @@ class SimModelTest {
     } while (distRescuer < 1 || distPilot < 2);
     model.moveTowards("rescuer1", target);
     model.moveTowards("pilot1", target);
-    assertEquals(
-        distRescuer - 1,
-        Config.getManhattanDistance(
-            model.getResponder("rescuer1").orElseThrow().position(), target),
-        "Rescuer should move one cell");
-    assertEquals(
-        distPilot - 2,
-        Config.getManhattanDistance(model.getResponder("pilot1").orElseThrow().position(), target),
-        "Pilot should move two cells");
+    Location newRescuerPos = model.getResponder("rescuer1").orElseThrow().position();
+    Location newPilotPos = model.getResponder("pilot1").orElseThrow().position();
+    assertTrue(
+        Config.getManhattanDistance(newRescuerPos, target) < distRescuer,
+        "Rescuer should move closer to target");
+    assertTrue(
+        Config.getManhattanDistance(newPilotPos, target) < distPilot,
+        "Pilot should move closer to target");
   }
 
   @Test

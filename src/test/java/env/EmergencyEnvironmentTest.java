@@ -25,6 +25,7 @@ class EmergencyEnvironmentTest {
   private static final int GRID_WIDTH = 10;
   private static final int GRID_HEIGHT = 10;
   private static final int INITIAL_STATIONS = 2;
+  private static final int INITIAL_OBSTACLES = 5;
 
   private EmergencyEnvironment env;
   private SimModel model;
@@ -36,7 +37,7 @@ class EmergencyEnvironmentTest {
           @Override
           public void init(String[] args) {}
         };
-    model = new SimModel(GRID_WIDTH, GRID_HEIGHT, INITIAL_STATIONS);
+    model = new SimModel(GRID_WIDTH, GRID_HEIGHT, INITIAL_STATIONS, INITIAL_OBSTACLES);
 
     View dummyView =
         new View() {
