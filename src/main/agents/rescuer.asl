@@ -126,6 +126,16 @@ can_attack(RT, Id, W, R) :-
 +!your_turn(RT, _)[source(orchestrator)] <-
 	.send(orchestrator, tell, pass(RT)).
 
+// Atomic so the move is stored before the next turn is handled.
+@relay_move[atomic]
++!kqml_received(orchestrator, Performative, move(RT, M, E, C), _) : .member(Performative, [argue, attack, reject]) <-
+	+move(RT, M, E, C).
+
+// Who concedes withdraws its claim, so its moves and the ones against it stop counting.
+@relay_concede[atomic]
++!kqml_received(orchestrator, concede, move(RT, _, E, concede), _) <-
+	.abolish(move(RT, _, E, claim(_))).
+
 // When granted a resource for the emergency, the agent waits for the operation to end and then goes home.
 +granted(Id, Resource)[source(orchestrator)] <-
 	-granted(Id, Resource)[source(orchestrator)].
