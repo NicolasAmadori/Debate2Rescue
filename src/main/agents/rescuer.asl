@@ -19,6 +19,15 @@ strength(trapped, 3).
 strength(escalating, 2).
 strength(victims, 1).
 
+// Mapping from boolean percept values (trapped, escalating) to debate facts
+trapped_fact(true, [trapped]).
+trapped_fact(false, []).
+trapped_fact(_, []).
+
+escalating_fact(true, [escalating]).
+escalating_fact(false, []).
+escalating_fact(_, []).
+
 /* Rules */
 
 stronger(R1, R2) :- strength(R1, S1) & strength(R2, S2) & S1 > S2.
@@ -52,11 +61,19 @@ beats(victims, F1, F2) :- .member(victims(V1), F1) & .member(victims(V2), F2) & 
 
 // Requesting the resource required by the emergency type.
 +!evaluate(Id, Type, Severity, Victims, Trapped, Escalating) : resource_for(Type, Resource) <-
-	.send(orchestrator, tell, request(Id, Resource, [Type, Severity, Victims, Trapped, Escalating])).
+	!make_request(Id, Resource, Severity, Victims, Trapped, Escalating).
 
 // Fallback: if the emergency type has no mapping, request a helicopter.
 +!evaluate(Id, Type, Severity, Victims, Trapped, Escalating) <-
-	.send(orchestrator, tell, request(Id, helicopter, [Type, Severity, Victims, Trapped, Escalating])).
+	!make_request(Id, helicopter, Severity, Victims, Trapped, Escalating).
+
++!make_request(Id, RT, Severity, Victims, Trapped, Escalating) <-
+	?trapped_fact(Trapped, FT);
+	?escalating_fact(Escalating, FE);
+	.concat(FT, FE, [severity(Severity), victims(Victims)], Facts);
+	+requesting(Id, RT, Facts);
+	+denials(Id, 0);
+	.send(orchestrator, tell, request(Id, RT)).
 
 // When granted a resource for the emergency, the agent waits for the operation to end and then goes home.
 +granted(Id, Resource)[source(orchestrator)] <-
