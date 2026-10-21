@@ -1,6 +1,7 @@
 /*  Recap:
 	Percepts: emergency(Id, X, Y), rescuer(R, X, Y), pilot(P, RT, X, Y)
 
+	Order is a list of contenders c(Id, R)
 */
 
 // steps for the request collection
@@ -14,7 +15,7 @@ move_count(0).
 // D is the Manhattan distance between the cells (AX, AY) and (X, Y)
 distance(AX, AY, X, Y, D) :- D = math.abs(AX - X) + math.abs(AY - Y).
 
-// arg2p accepts the claim of emergency W, Labels are the labels of all the claims
+// arg2p accepts the claim of emergency W, Labels are the labels of all the claims and objections
 winning(RT, W, Labels) :-
 	.findall(move(M, A, C), move(RT, M, A, C), Moves) &
 	arg.deliberate(Moves, Labels) &
@@ -106,24 +107,68 @@ winning(RT, W, Labels) :-
 
 // claims phase: the oldest contender without a claim gets the turn
 +!next_turn(RT) : debate(RT, Order) & .member(c(Id, R), Order) & not move(RT, _, Id, claim(_)) <-
+	!give_turn(RT, Id, R, none).
+
+// then the turn goes to the first losing contender who did not pass
++!next_turn(RT) : debate(RT, Order) <-
+	if (winning(RT, W, Labels)) {
+		.print(RT, " debate labels: ", Labels);
+	} else {
+		// arg2p accepted no claim, the oldest emergency is winning
+		.min(Order, c(W, _));
+		.print(RT, " debate: no claim accepted, emergency ", W, " is the oldest");
+	}
+	if (.member(c(Id, R), Order) & Id \== W & not passed(RT, Id)) {
+		!give_turn(RT, Id, R, W);
+	} else {
+		// everyone has passed
+		!conclude(RT, W);
+	}.
+
+// W is the emergency currently winning
++!give_turn(RT, Id, R, W) <-
 	+turn(RT, Id, R);
-	.send(R, achieve, your_turn(RT, none)).
+	.send(R, achieve, your_turn(RT, W)).
 
-// all the claims are in, arg2p decides
-+!next_turn(RT) : winning(RT, W, Labels) <-
-	.print(RT, " debate labels: ", Labels);
-	!conclude(RT, W).
-
-// arg2p accepted no claim, the oldest emergency wins
-+!next_turn(RT) : debate(RT, [c(W, _) | _]) <-
-	.print(RT, " debate: no claim accepted, the oldest emergency wins");
-	!conclude(RT, W).
-
-+!kqml_received(R, argue, claim(RT, Facts), _) : turn(RT, Id, R) & move_count(N) <-
+// who just had the turn goes behind the others
++!end_turn(RT, Id, R) : debate(RT, Order) <-
 	-turn(RT, Id, R);
+	.delete(c(Id, R), Order, Others);
+	.concat(Others, [c(Id, R)], NewOrder);
+	-debate(RT, _);
+	+debate(RT, NewOrder).
+
+// argue, attack and reject are custom performatives, they arrive through kqml_received
++!kqml_received(R, argue, claim(RT, Facts), _) : turn(RT, _, R) <-
+	!record_move(RT, argue, claim(Facts)).
+
+// the claim of emergency E is behind the one of the attacker for Reason
++!kqml_received(R, attack, attack(RT, E, Reason), _) : turn(RT, _, R) <-
+	!record_move(RT, attack, attack(E, Reason)).
+
+// the objection M is wrong for Reason
++!kqml_received(R, reject, reject(RT, M, Reason), _) : turn(RT, _, R) <-
+	!record_move(RT, reject, reject(M, Reason)).
+
+// the contender has nothing to say for now
++pass(RT)[source(R)] : turn(RT, Id, R) <-
+	-pass(RT)[source(R)];
+	.print(RT, " debate: ", R, " (emergency ", Id, ") passes");
+	+passed(RT, Id);
+	!end_turn(RT, Id, R);
+	!next_turn(RT).
+
+// stores the move of who has the turn and relays it to the contenders with the same performative
+// the move may change the winner, so who passed can speak again
++!record_move(RT, Performative, Content) : turn(RT, Id, R) & debate(RT, Order) & move_count(N) <-
 	-+move_count(N + 1); // replaces move_count
-	+move(RT, N + 1, Id, claim(Facts));
-	.print(RT, " debate, move ", N + 1, ": ", R, " (emergency ", Id, ") argues ", Facts);
+	+move(RT, N + 1, Id, Content);
+	.print(RT, " debate, move ", N + 1, ": ", R, " (emergency ", Id, ") ", Performative, " ", Content);
+	for (.member(c(_, CR), Order)) {
+		.send(CR, Performative, move(RT, N + 1, Id, Content));
+	}
+	.abolish(passed(RT, _));
+	!end_turn(RT, Id, R);
 	!next_turn(RT).
 
 // the losers wait for the next debate, the winner gets the resource
@@ -133,6 +178,7 @@ winning(RT, W, Labels) :-
 		.send(LR, tell, denied(L, RT));
 	}
 	.abolish(move(RT, _, _, _));
+	.abolish(passed(RT, _));
 	-debate(RT, _);
 	!grant(W, RT);
 	!deliberate(RT).
