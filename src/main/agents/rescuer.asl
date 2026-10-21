@@ -136,9 +136,19 @@ can_attack(RT, Id, W, R) :-
 +!kqml_received(orchestrator, concede, move(RT, _, E, concede), _) <-
 	.abolish(move(RT, _, E, claim(_))).
 
-// When granted a resource for the emergency, the agent waits for the operation to end and then goes home.
-+granted(Id, Resource)[source(orchestrator)] <-
-	-granted(Id, Resource)[source(orchestrator)].
+// Denied the resource: the request waits for the next debate.
++denied(Id, RT)[source(orchestrator)] : denials(Id, N) <-
+	-denied(Id, RT)[source(orchestrator)];
+	.abolish(move(RT, _, _, _));
+	-denials(Id, N);
+	+denials(Id, N + 1).
+
+// When granted the resource, the agent waits for the operation to end and then goes home.
++granted(Id, RT)[source(orchestrator)] <-
+	-granted(Id, RT)[source(orchestrator)];
+	.abolish(move(RT, _, _, _));
+	-requesting(Id, RT, _);
+	-denials(Id, _).
 
 +emergency_resolved(Id) <-
     -emergency_resolved(Id);
