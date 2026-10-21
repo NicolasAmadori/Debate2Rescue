@@ -138,7 +138,7 @@ winning(RT, W, Labels) :-
 	-debate(RT, _);
 	+debate(RT, NewOrder).
 
-// argue, attack and reject are custom performatives, they arrive through kqml_received
+// argue, attack, reject and concede are custom performatives, they arrive through kqml_received
 +!kqml_received(R, argue, claim(RT, Facts), _) : turn(RT, _, R) <-
 	!record_move(RT, argue, claim(Facts)).
 
@@ -149,6 +149,23 @@ winning(RT, W, Labels) :-
 // the objection M is wrong for Reason
 +!kqml_received(R, reject, reject(RT, M, Reason), _) : turn(RT, _, R) <-
 	!record_move(RT, reject, reject(M, Reason)).
+
+// the contender withdraws and waits for the next debate
+// without its claim its moves stop counting and the winner may change, so who passed can speak again
++!kqml_received(R, concede, concede(RT), _) : turn(RT, Id, R) & debate(RT, Order) & move_count(N) <-
+	-+move_count(N + 1);
+	.print(RT, " debate, move ", N + 1, ": ", R, " (emergency ", Id, ") concedes");
+	-turn(RT, Id, R);
+	.abolish(move(RT, _, Id, claim(_)));
+	.abolish(passed(RT, _));
+	.delete(c(Id, R), Order, Others);
+	-debate(RT, _);
+	+debate(RT, Others);
+	for (.member(c(_, OR), Others)) {
+		.send(OR, concede, move(RT, N + 1, Id, concede));
+	}
+	.send(R, tell, denied(Id, RT));
+	!next_turn(RT).
 
 // the contender has nothing to say for now
 +pass(RT)[source(R)] : turn(RT, Id, R) <-
