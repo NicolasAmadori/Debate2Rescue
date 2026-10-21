@@ -40,6 +40,35 @@ beats(trapped, F1, F2) :- .member(trapped, F1) & not .member(trapped, F2).
 beats(escalating, F1, F2) :- .member(escalating, F1) & not .member(escalating, F2).
 beats(victims, F1, F2) :- .member(victims(V1), F1) & .member(victims(V2), F2) & V1 > V2.
 
+// Reason of an attack or a reject move
+reason(attack(_, R), R).
+reason(reject(_, R), R).
+
+// Facts claimed for my emergency, including the waiting counter (number of denials)
+claim_facts(Id, RT, [waiting(N) | F]) :- requesting(Id, RT, F) & denials(Id, N).
+claim_facts(Id, RT, [waiting(0) | F]) :- requesting(Id, RT, F).
+
+// F are the facts claimed for emergency E in the debate for RT
+facts(RT, E, F) :- move(RT, _, E, claim(F)).
+
+// M attacks my claim, or rejects one of my rejects, and I did not reject it yet
+// the moves of who conceded do not count, its claim is gone
+against_me(RT, Id, M) :-
+	move(RT, M, A, attack(Id, _)) & facts(RT, A, _) & not move(RT, _, Id, reject(M, _)).
+against_me(RT, Id, M) :-
+	move(RT, M, A, reject(T, _)) & facts(RT, A, _) & move(RT, T, Id, _) & not move(RT, _, Id, reject(M, _)).
+
+// R rejects move M: my emergency is ahead of its author's for R, which is stronger than the reason of M
+// the first R found is the strongest
+defense(RT, Id, M, R) :-
+	move(RT, M, A, C) & reason(C, RM) & facts(RT, Id, F) & facts(RT, A, FA) &
+	beats(R, F, FA) & stronger(R, RM).
+
+// I did not attack the winning emergency W yet, my emergency is ahead of it for R
+// the first R found is the strongest
+can_attack(RT, Id, W, R) :-
+	facts(RT, W, FW) & not move(RT, _, Id, attack(W, _)) & facts(RT, Id, F) & beats(R, F, FW).
+
 /* Initial goals */
 
 !start.
@@ -74,6 +103,28 @@ beats(victims, F1, F2) :- .member(victims(V1), F1) & .member(victims(V2), F2) & 
 	+requesting(Id, RT, Facts);
 	+denials(Id, 0);
 	.send(orchestrator, tell, request(Id, RT)).
+
+/* Debate */
+
+// First turn: claim the resource with the facts of the emergency.
++!your_turn(RT, _)[source(orchestrator)] : requesting(Id, RT, _) & not facts(RT, Id, _) & claim_facts(Id, RT, F) <-
+	.send(orchestrator, argue, claim(RT, F)).
+
+// A move against me that I cannot reject: my claim cannot win, withdraw from the debate.
++!your_turn(RT, _)[source(orchestrator)] : requesting(Id, RT, _) & against_me(RT, Id, M) & not defense(RT, Id, M, _) <-
+	.send(orchestrator, concede, concede(RT)).
+
+// Defend against a move with the strongest reason.
++!your_turn(RT, _)[source(orchestrator)] : requesting(Id, RT, _) & against_me(RT, Id, M) & defense(RT, Id, M, R) <-
+	.send(orchestrator, reject, reject(RT, M, R)).
+
+// Attack the winning emergency with the strongest reason.
++!your_turn(RT, W)[source(orchestrator)] : requesting(Id, RT, _) & can_attack(RT, Id, W, R) <-
+	.send(orchestrator, attack, attack(RT, W, R)).
+
+// Nothing new to say.
++!your_turn(RT, _)[source(orchestrator)] <-
+	.send(orchestrator, tell, pass(RT)).
 
 // When granted a resource for the emergency, the agent waits for the operation to end and then goes home.
 +granted(Id, Resource)[source(orchestrator)] <-
