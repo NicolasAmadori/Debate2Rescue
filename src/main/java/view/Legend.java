@@ -24,6 +24,8 @@ class Legend extends JPanel {
       add(entry(agent.name(), new Swatch(Shape.CIRCLE, agent.getColor())));
     }
     add(entry("station", new Swatch(Shape.STRIPES, null)));
+    // obstacles are drawn by GridWorldView.drawObstacle, dark gray with a black outline
+    add(entry("obstacle", new Swatch(Shape.SQUARE, Color.DARK_GRAY)));
     for (EmergencyType type : EmergencyType.values()) {
       add(entry(type.name(), new Swatch(Shape.SQUARE, ViewImpl.toColor(type.colorCode))));
     }
