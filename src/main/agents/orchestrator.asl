@@ -92,8 +92,12 @@ winning(RT, W, Labels) :-
 +!deliberate(RT) : not window(RT) & not debate(RT, _) & availableResource(RT, _) & request(_, RT) <-
 	.findall(c(Id, R), request(Id, RT)[source(R)], Contenders);
 	.sort(Contenders, Order);
-	if (Order = [c(Id, _)]) {
-		!grant(Id, RT);
+	.count(availableResource(RT, _), Free);
+	.length(Order, N);
+	if (N <= Free) {
+		for (.member(c(Id, _), Order)) {
+			!grant(Id, RT);
+		}
 	} else {
 		.print("Debate for ", RT, " between ", Order);
 		+debate(RT, Order);
