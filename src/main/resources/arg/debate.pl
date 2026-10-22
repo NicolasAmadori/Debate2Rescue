@@ -1,8 +1,13 @@
 /*
+    Variables:
+        E -> emergency id
+        O -> objection id
+        R -> reason
+
     Facts to be handled Java-side:
         contender(E), severity(E, S), victims(E, V)
-        attack(M, A, E, R): objection M by emergency A attacks the claim of E with reason R
-        reject(M, A, T, R): objection M by emergency A rejects the objection T with reason R
+        attack(O, E1, E2, R): objection O by emergency E1 attacks the claim of E with reason R
+        reject(O1, E1, O2, R1): objection O1 by emergency E1 rejects the objection O2 with reason R1
 
 */
 
@@ -11,10 +16,10 @@
 claim(E) : prolog(contender(E)) => grant(E).
 
 % an attack is valid if its reason really puts the attacker ahead of the target
-objection(M) : prolog(attack(M, A, E, R)), prolog(beats(R, A, E)) => undercut(claim(E)).
+objection(O) : prolog(attack(O, E1, E2, R)), prolog(beats(R, E1, E2)) => undercut(claim(E2)).
 
 % a reject is valid if its reason puts the author ahead and is stronger than the rejected one
-objection(M) : prolog(reject(M, A, T, R)), prolog(objection_by(T, B, RT)), prolog(beats(R, A, B)), prolog(stronger(R, RT)) => undercut(objection(T)).
+objection(O1) : prolog(reject(O1, E1, O2, R1)), prolog(objection_by(O2, E2, R2)), prolog(beats(R1, E1, E2)), prolog(stronger(R1, R2)) => undercut(objection(O2)).
 
 
 /* Strict rules */
@@ -36,9 +41,9 @@ strength(victims, 1).
 
 stronger(R1, R2) :- strength(R1, S1), strength(R2, S2), S1 > S2.
 
-/* The objection M was made by emergency A with reason R */
-objection_by(M, A, R) :- attack(M, A, _, R).
-objection_by(M, A, R) :- reject(M, A, _, R).
+/* The objection O was made by emergency E with reason R */
+objection_by(O, E, R) :- attack(O, E, _, R).
+objection_by(O, E, R) :- reject(O, E, _, R).
 
 /* Reason R puts emergency E1 ahead of E2. */
 beats(waiting, E1, E2) :- waiting(E1, W1), waiting(E2, W2), W1 > W2.
