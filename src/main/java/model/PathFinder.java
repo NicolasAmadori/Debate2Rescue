@@ -98,9 +98,7 @@ public class PathFinder {
    * @return true if the cell is traversable, false otherwise
    */
   public boolean isTraversable(Location loc) {
-    return model.inGrid(loc)
-        && !model.hasObject(SimModel.STATION, loc)
-        && !model.hasObject(SimModel.OBSTACLE, loc);
+    return model.inGrid(loc) && !model.hasObject(SimModel.OBSTACLE, loc);
   }
 
   /***
