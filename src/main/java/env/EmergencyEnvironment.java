@@ -46,7 +46,6 @@ public class EmergencyEnvironment extends Environment {
 
   // Emergency generation
   private static final int ACTION_THREADS = 20;
-  private static final int SPAWN_CHANCE_PERCENTAGE = 30;
 
   private SimModel model;
   private View view;
@@ -55,6 +54,7 @@ public class EmergencyEnvironment extends Environment {
   private final Random random = new Random();
   private Thread generatorThread;
   private int simulationSpeed = 300; // Managed from the view
+  private int spawnChance = 30; // Managed from the view, percentage per step
 
   public EmergencyEnvironment() {
     // Increased the number of action threads for better concurrency handling
@@ -75,6 +75,8 @@ public class EmergencyEnvironment extends Environment {
             config.obstaclesCount());
     view = new ViewImpl(model);
     view.setOnSpeedChange(speed -> simulationSpeed = speed);
+    view.setOnSpawnChanceChange(chance -> spawnChance = chance);
+    view.setOnMaxEmergenciesChange(max -> maxEmergencies = max);
 
     // Spawning dynamic rescuers asynchronously
     new Thread(this::spawnInitialAgents, "agent-spawner").start();
@@ -161,8 +163,7 @@ public class EmergencyEnvironment extends Environment {
     try {
       while (!Thread.currentThread().isInterrupted()) {
         Thread.sleep(simulationSpeed);
-        if (random.nextInt(100) < SPAWN_CHANCE_PERCENTAGE
-            && model.getEmergencies().size() < maxEmergencies) {
+        if (random.nextInt(100) < spawnChance && model.getEmergencies().size() < maxEmergencies) {
           model
               .spawnEmergency()
               .ifPresent(
