@@ -19,8 +19,9 @@ class SidePanel extends JPanel {
   private static final int MAX_DELAY_MS = 1000;
   private static final int START_DELAY_MS = 300;
   private static final int START_SPAWN_CHANCE = 30;
-  private static final double WIDTH_RATIO = 0.35;
-  private static final int MIN_WIDTH = 400;
+  private static final double WIDTH_RATIO = 0.5;
+  private static final int MIN_WIDTH = 650;
+  private static final int CONTROLS_WIDTH = 260;
   private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
 
   private final JSlider speedSlider = new JSlider(MIN_DELAY_MS, MAX_DELAY_MS, START_DELAY_MS);
@@ -28,9 +29,9 @@ class SidePanel extends JPanel {
   private final JTextArea logArea = new JTextArea();
 
   SidePanel() {
-    super(new BorderLayout(0, 8));
+    super(new BorderLayout(8, 0));
     setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-    setPreferredSize(new Dimension(320, 500));
+    setPreferredSize(new Dimension(MIN_WIDTH, 500));
 
     // moving the slider to the right speeds up the simulation
     speedSlider.setInverted(true);
@@ -42,7 +43,12 @@ class SidePanel extends JPanel {
     JPanel top = new JPanel(new BorderLayout(0, 8));
     top.add(sliders, BorderLayout.NORTH);
     top.add(new Legend(), BorderLayout.CENTER);
-    add(top, BorderLayout.NORTH);
+    // legend needs its own panel to make controls keep
+    // their height instead of stretching to the whole column
+    JPanel controls = new JPanel(new BorderLayout());
+    controls.setPreferredSize(new Dimension(CONTROLS_WIDTH, 0));
+    controls.add(top, BorderLayout.NORTH);
+    add(controls, BorderLayout.WEST);
 
     logArea.setEditable(false);
     logArea.setLineWrap(true);
