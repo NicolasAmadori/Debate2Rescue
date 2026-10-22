@@ -48,7 +48,7 @@ public class ViewImpl extends GridWorldView implements View {
 
     getCanvas().setBackground(Color.WHITE);
     getCanvas().setPreferredSize(new Dimension(width, width));
-    this.side = new SidePanel();
+    this.side = new SidePanel(model.getWidth(), model.getHeight());
     getContentPane().add(side, BorderLayout.EAST);
     pack();
   }
@@ -129,6 +129,11 @@ public class ViewImpl extends GridWorldView implements View {
   @Override
   public void setOnSpawnChanceChange(IntConsumer onSpawnChanceChange) {
     SwingUtilities.invokeLater(() -> side.setOnSpawnChanceChange(onSpawnChanceChange));
+  }
+
+  @Override
+  public void setOnMaxEmergenciesChange(IntConsumer onMaxEmergenciesChange) {
+    SwingUtilities.invokeLater(() -> side.setOnMaxEmergenciesChange(onMaxEmergenciesChange));
   }
 
   /** Draws a station as a striped cell */

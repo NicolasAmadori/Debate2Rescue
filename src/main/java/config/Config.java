@@ -16,6 +16,7 @@ public final class Config {
   public static final double STATION_FREQ = 0.1;
   public static final double MAX_STATION_FREQ = 0.5;
   public static final double MAX_EMERGENCY_FREQ = 0.5;
+  public static final double MAX_EMERGENCY_LIMIT_FREQ = 2.0;
   public static final double OBSTACLE_FREQ = 0.25;
   public static final double MAX_OBSTACLE_FREQ = 1.0;
 
@@ -47,6 +48,11 @@ public final class Config {
 
   public static int getMaxNumEmergencies(int width, int height) {
     return (int) Math.round(mean(width, height) * MAX_EMERGENCY_FREQ);
+  }
+
+  // the highest value the max number of emergencies can be set to at runtime
+  public static int getMaxEmergencyLimit(int width, int height) {
+    return (int) Math.round(mean(width, height) * MAX_EMERGENCY_LIMIT_FREQ);
   }
 
   public static int getManhattanDistance(Location from, Location to) {

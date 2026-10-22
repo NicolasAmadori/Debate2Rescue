@@ -1,5 +1,6 @@
 package view;
 
+import config.Config;
 import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.Dimension;
@@ -26,9 +27,10 @@ class SidePanel extends JPanel {
 
   private final JSlider speedSlider = new JSlider(MIN_DELAY_MS, MAX_DELAY_MS, START_DELAY_MS);
   private final JSlider spawnSlider = new JSlider(0, 100, START_SPAWN_CHANCE);
+  private final JSlider maxEmergenciesSlider;
   private final JTextArea logArea = new JTextArea();
 
-  SidePanel() {
+  SidePanel(int gridWidth, int gridHeight) {
     super(new BorderLayout(8, 0));
     setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
     setPreferredSize(new Dimension(MIN_WIDTH, 500));
@@ -37,9 +39,16 @@ class SidePanel extends JPanel {
     speedSlider.setInverted(true);
     speedSlider.setBorder(BorderFactory.createTitledBorder("Speed"));
     spawnSlider.setBorder(BorderFactory.createTitledBorder(spawnTitle()));
+    maxEmergenciesSlider =
+        new JSlider(
+            1,
+            Config.getMaxEmergencyLimit(gridWidth, gridHeight),
+            Config.getMaxNumEmergencies(gridWidth, gridHeight));
+    maxEmergenciesSlider.setBorder(BorderFactory.createTitledBorder(maxEmergenciesTitle()));
     JPanel sliders = new JPanel(new BorderLayout(0, 8));
     sliders.add(speedSlider, BorderLayout.NORTH);
-    sliders.add(spawnSlider, BorderLayout.SOUTH);
+    sliders.add(spawnSlider, BorderLayout.CENTER);
+    sliders.add(maxEmergenciesSlider, BorderLayout.SOUTH);
     JPanel top = new JPanel(new BorderLayout(0, 8));
     top.add(sliders, BorderLayout.NORTH);
     top.add(new Legend(), BorderLayout.CENTER);
@@ -89,6 +98,15 @@ class SidePanel extends JPanel {
     onSpawnChanceChange.accept(spawnSlider.getValue());
   }
 
+  void setOnMaxEmergenciesChange(IntConsumer onMaxEmergenciesChange) {
+    maxEmergenciesSlider.addChangeListener(
+        e -> {
+          maxEmergenciesSlider.setBorder(BorderFactory.createTitledBorder(maxEmergenciesTitle()));
+          onMaxEmergenciesChange.accept(maxEmergenciesSlider.getValue());
+        });
+    onMaxEmergenciesChange.accept(maxEmergenciesSlider.getValue());
+  }
+
   // with a chance of p% per step, an emergency spawns on average every 100 / p steps
   private String spawnTitle() {
     int chance = spawnSlider.getValue();
@@ -96,5 +114,9 @@ class SidePanel extends JPanel {
       return "Spawn rate: 0% (no new emergencies)";
     }
     return "Spawn rate: " + chance + "% (≈ 1 every " + Math.round(100.0 / chance) + " steps)";
+  }
+
+  private String maxEmergenciesTitle() {
+    return "Max emergencies: " + maxEmergenciesSlider.getValue();
   }
 }

@@ -76,6 +76,7 @@ public class EmergencyEnvironment extends Environment {
     view = new ViewImpl(model);
     view.setOnSpeedChange(speed -> simulationSpeed = speed);
     view.setOnSpawnChanceChange(chance -> spawnChance = chance);
+    view.setOnMaxEmergenciesChange(max -> maxEmergencies = max);
 
     // Spawning dynamic rescuers asynchronously
     new Thread(this::spawnInitialAgents, "agent-spawner").start();

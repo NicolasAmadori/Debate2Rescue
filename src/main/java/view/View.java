@@ -28,4 +28,12 @@ public interface View {
    *     every simulation step
    */
   void setOnSpawnChanceChange(IntConsumer onSpawnChanceChange);
+
+  /**
+   * Registers the action to run when the user moves the max emergencies slider
+   *
+   * @param onMaxEmergenciesChange receives the max number of emergencies on the grid at the same
+   *     time
+   */
+  void setOnMaxEmergenciesChange(IntConsumer onMaxEmergenciesChange);
 }
