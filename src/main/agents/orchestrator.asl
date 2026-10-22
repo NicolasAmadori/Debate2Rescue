@@ -12,8 +12,8 @@ move_count(0).
 
 /* Rules */
 
-// D is the Manhattan distance between the cells (AX, AY) and (X, Y)
-distance(AX, AY, X, Y, D) :- D = math.abs(AX - X) + math.abs(AY - Y).
+// D is the Bresenham distance from (AX, AY) to (X, Y), obstacles are not considered
+distance(AX, AY, X, Y, D) :- D = math.max(math.abs(AX - X), math.abs(AY - Y)).
 
 // arg2p accepts the claim of emergency W, Labels are the labels of all the claims and objections
 winning(RT, W, Labels) :-
