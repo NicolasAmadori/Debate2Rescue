@@ -20,4 +20,12 @@ public interface View {
    * @param onSpeedChange receives the delay in ms between simulation steps, in milliseconds
    */
   void setOnSpeedChange(IntConsumer onSpeedChange);
+
+  /**
+   * Registers the action to run when the user moves the spawn rate slider
+   *
+   * @param onSpawnChanceChange receives the chance, in percentage, of spawning an emergency at
+   *     every simulation step
+   */
+  void setOnSpawnChanceChange(IntConsumer onSpawnChanceChange);
 }

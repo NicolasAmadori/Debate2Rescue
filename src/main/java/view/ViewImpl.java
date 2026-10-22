@@ -126,6 +126,11 @@ public class ViewImpl extends GridWorldView implements View {
     SwingUtilities.invokeLater(() -> side.setOnSpeedChange(onSpeedChange));
   }
 
+  @Override
+  public void setOnSpawnChanceChange(IntConsumer onSpawnChanceChange) {
+    SwingUtilities.invokeLater(() -> side.setOnSpawnChanceChange(onSpawnChanceChange));
+  }
+
   /** Draws a station as a striped cell */
   private void drawStation(Graphics g, int x, int y) {
     drawStripes(g, x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);

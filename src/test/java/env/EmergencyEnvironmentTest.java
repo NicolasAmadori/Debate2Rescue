@@ -52,6 +52,11 @@ class EmergencyEnvironmentTest {
           }
 
           @Override
+          public void setOnSpawnChanceChange(IntConsumer listener) {
+            // Empty implementation for testing purposes
+          }
+
+          @Override
           public void update() {
             // Empty implementation for testing purposes
           }
