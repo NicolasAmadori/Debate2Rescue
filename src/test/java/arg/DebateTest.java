@@ -19,17 +19,16 @@ public class DebateTest {
   }
 
   @Test
-  public void testClaimFactsAreAddedToTheory() {
-    d.addClaim(1, 2, 3, true, true, 5);
+  public void testMovesAreAddedToTheory() {
+    d.addContender(1);
+    d.addValue(2, 1, "severity", 3);
+    d.addChallenge(1, 4, "severity");
 
     String theory = d.theory();
 
     assertTrue(theory.contains("contender(1)."));
-    assertTrue(theory.contains("severity(1, 2)."));
-    assertTrue(theory.contains("victims(1, 3)."));
-    assertTrue(theory.contains("trapped(1)."));
-    assertTrue(theory.contains("escalating(1)."));
-    assertTrue(theory.contains("waiting(1, 5)."));
+    assertTrue(theory.contains("m2 :=> val(1, severity, 3)."));
+    assertTrue(theory.contains("challenged(1, 4, severity)."));
   }
 
   @Test
@@ -45,17 +44,16 @@ public class DebateTest {
 
   @Test
   public void testSingleClaimWins() {
-    d.addClaim(1, 2, 3, true, true, 10);
+    d.addContender(1);
 
     Map<String, String> evaluation = d.evaluate();
-    assertTrue(evaluation.containsValue(IN));
     assertEquals(IN, evaluation.get(buildClaim(1)));
   }
 
   @Test
-  public void testOldestEmergencyWins() {
-    d.addClaim(1, 4, 0, false, false, 0);
-    d.addClaim(4, 2, 3, true, true, 7);
+  public void testOldestEmergencyWinsWithClaimsOnly() {
+    d.addContender(1);
+    d.addContender(4);
 
     Map<String, String> evaluation = d.evaluate();
     assertEquals(IN, evaluation.get(buildClaim(1)));
