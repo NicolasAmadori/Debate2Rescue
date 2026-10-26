@@ -11,20 +11,19 @@
 
 */
 
+/* Claims */
+claim(E) : prolog(contender(E)) => grant(E).
+% the resource goes to one emergency only, excluding the claims of younger emergencies
+exclude(E1, E2) : grant(E1), prolog(contender(E2)), prolog(E1 < E2) -> -grant(E2).
 
 /* Defeasible rules */
-claim(E) : prolog(contender(E)) => grant(E).
-
 % an attack is valid if its reason really puts the attacker ahead of the target
 objection(O) : prolog(attack(O, E1, E2, R)), prolog(beats(R, E1, E2)) => undercut(claim(E2)).
 
 % a reject is valid if its reason puts the author ahead and is stronger than the rejected one
 objection(O1) : prolog(reject(O1, E1, O2, R1)), prolog(objection_by(O2, E2, R2)), prolog(beats(R1, E1, E2)), prolog(stronger(R1, R2)) => undercut(objection(O2)).
 
-
 /* Strict rules */
-exclude(E1, E2) : grant(E1), prolog(contender(E2)), prolog(E1 \== E2) -> -grant(E2).
-
 
 /* Preferences */
 % Older emergencies should go first
