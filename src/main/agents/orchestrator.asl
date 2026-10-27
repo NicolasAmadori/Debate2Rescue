@@ -101,19 +101,26 @@ winning(RT, W, Labels) :-
 	} else {
 		.print("Debate for ", RT, " between ", Order);
 		+debate(RT, Order);
+		for (.member(c(Id, _), Order)) {
+			!add_claim(RT, Id);
+		}
 		!next_turn(RT);
 	}.
 
 // a window or a debate is open, no pilot of the type is free or no request is waiting
 +!deliberate(_).
 
+// create claims from teh requests and forward to contenders
++!add_claim(RT, Id) : debate(RT, Order) & move_count(N) <-
+	-+move_count(N + 1);
+	+move(RT, N + 1, Id, claim);
+	for (.member(c(_, R), Order)) {
+		.send(R, argue, move(RT, N + 1, Id, claim));
+	}.
+
 /* Debate */
 
-// claims phase: the oldest contender without a claim gets the turn
-+!next_turn(RT) : debate(RT, Order) & .member(c(Id, R), Order) & not move(RT, _, Id, claim(_)) <-
-	!give_turn(RT, Id, R, none).
-
-// then the turn goes to the first losing contender who did not pass
+// the turn goes to the first losing contender who did not concede
 +!next_turn(RT) : debate(RT, Order) <-
 	if (winning(RT, W, Labels)) {
 		.print(RT, " debate labels: ", Labels);
@@ -142,17 +149,13 @@ winning(RT, W, Labels) :-
 	-debate(RT, _);
 	+debate(RT, NewOrder).
 
-// argue, attack, reject and concede are custom performatives, they arrive through kqml_received
-+!kqml_received(R, argue, claim(RT, Facts), _) : turn(RT, _, R) <-
-	!record_move(RT, argue, claim(Facts)).
+// the attacker challenges the claim of emergency E on Reason, revealing its Value
++!kqml_received(R, challenge, challenge(RT, E, Reason, Value), _) : turn(RT, _, R) <-
+	!record_move(RT, challenge, challenge(E, Reason, Value)).
 
-// the claim of emergency E is behind the one of the attacker for Reason
-+!kqml_received(R, attack, attack(RT, E, Reason), _) : turn(RT, _, R) <-
-	!record_move(RT, attack, attack(E, Reason)).
-
-// the objection M is wrong for Reason
-+!kqml_received(R, reject, reject(RT, M, Reason), _) : turn(RT, _, R) <-
-	!record_move(RT, reject, reject(M, Reason)).
+// the target of the challenge M answers it, revealing its Value for Reason
++!kqml_received(R, answer, answer(RT, M, Reason, Value), _) : turn(RT, _, R) <-
+	!record_move(RT, answer, answer(M, Reason, Value)).
 
 // the contender withdraws and waits for the next debate
 // without its claim its moves stop counting and the winner may change, so who passed can speak again
@@ -160,7 +163,7 @@ winning(RT, W, Labels) :-
 	-+move_count(N + 1);
 	.print(RT, " debate, move ", N + 1, ": ", R, " (emergency ", Id, ") concedes");
 	-turn(RT, Id, R);
-	.abolish(move(RT, _, Id, claim(_)));
+	.abolish(move(RT, _, Id, claim));
 	.abolish(passed(RT, _));
 	.delete(c(Id, R), Order, Others);
 	-debate(RT, _);
