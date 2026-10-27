@@ -18,7 +18,7 @@ exclude(E1, E2) : grant(E1), prolog(contender(E2)), prolog(E1 < E2) -> -grant(E2
 
 /* Evidence: E1 is ahead of E2 on reason R */
 % both values are known and E1 has the better one, on a reason that must have been raised between E1 and E2
-compare(E1, E2, R) : val(E1, R, V1), val(E2, R, V2), prolog(raised(E1, E2, R)), prolog(beats(R, V1, V2)) => ahead(R, E1, E2).
+compare(R, E1, E2) : val(E1, R, V1), val(E2, R, V2), prolog(raised(E1, E2, R)), prolog(beats(R, V1, V2)) => ahead(R, E1, E2).
 
 % a challenge holds as long as the target does not reveal its value for the reason
 challenge(R, E1, E2) : val(E1, R, V1), prolog(challenged(E1, E2, R)) => ahead(R, E1, E2).
