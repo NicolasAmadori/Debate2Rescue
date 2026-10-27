@@ -147,4 +147,80 @@ public class DebateTest {
     assertEquals(OUT, evaluation.get(buildClaim(6)));
     assertEquals(OUT, evaluation.get(buildClaim(10)));
   }
+
+  @Test
+  public void testCriticalIsNotOvertakenByWaiting() {
+    // 7 waited more, but 3 is critical
+    d.addContender(3);
+    d.addContender(7);
+    d.addValue(1, 7, "waiting", 1);
+    d.addChallenge(7, 3, "waiting");
+    // 3 does not answer on waiting, it shows it is critical
+    d.addValue(2, 3, "severity", 1);
+
+    Map<String, String> evaluation = d.evaluate();
+    assertEquals(IN, evaluation.get("life_first(7, 3)"));
+    assertEquals(OUT, evaluation.get("rank(waiting, 7, 3)"));
+    assertEquals(IN, evaluation.get(buildClaim(3)));
+    assertEquals(OUT, evaluation.get(buildClaim(7)));
+  }
+
+  @Test
+  public void testWaitingCountsBetweenCriticalEmergencies() {
+    // 7 shows it is critical too, the exception does not hold anymore
+    d.addContender(3);
+    d.addContender(7);
+    d.addValue(1, 7, "waiting", 1);
+    d.addChallenge(7, 3, "waiting");
+    d.addValue(2, 3, "severity", 1);
+    d.addValue(3, 7, "severity", 2);
+    d.addChallenge(7, 3, "severity");
+
+    Map<String, String> evaluation = d.evaluate();
+    assertEquals(OUT, evaluation.get("life_first(7, 3)"));
+    assertEquals(IN, evaluation.get("rank(waiting, 7, 3)"));
+    assertEquals(OUT, evaluation.get(buildClaim(3)));
+    assertEquals(IN, evaluation.get(buildClaim(7)));
+  }
+
+  @Test
+  public void testSpreadingEmergencyIsNotOvertakenOnSeverity() {
+    // 2 has a lower ESI, but 5 has people trapped in an escalating emergency
+    d.addContender(2);
+    d.addContender(5);
+    d.addValue(1, 5, "trapped", 1);
+    d.addChallenge(5, 2, "trapped");
+    d.addValue(2, 2, "severity", 3);
+    d.addChallenge(2, 5, "severity");
+    d.addValue(3, 5, "severity", 4);
+    d.addValue(4, 5, "escalating", 1);
+    d.addChallenge(5, 2, "escalating");
+
+    Map<String, String> evaluation = d.evaluate();
+    assertEquals(IN, evaluation.get("no_time(5, 2)"));
+    assertEquals(OUT, evaluation.get("rank(severity, 2, 5)"));
+    assertEquals(IN, evaluation.get("rank(trapped, 5, 2)"));
+    assertEquals(OUT, evaluation.get(buildClaim(2)));
+    assertEquals(IN, evaluation.get(buildClaim(5)));
+  }
+
+  @Test
+  public void testCriticalStillWinsOverSpreading() {
+    // 2 is critical: severity holds again
+    d.addContender(2);
+    d.addContender(5);
+    d.addValue(1, 5, "trapped", 1);
+    d.addChallenge(5, 2, "trapped");
+    d.addValue(2, 2, "severity", 2);
+    d.addChallenge(2, 5, "severity");
+    d.addValue(3, 5, "severity", 4);
+    d.addValue(4, 5, "escalating", 1);
+    d.addChallenge(5, 2, "escalating");
+
+    Map<String, String> evaluation = d.evaluate();
+    assertEquals(OUT, evaluation.get("no_time(5, 2)"));
+    assertEquals(IN, evaluation.get("rank(severity, 2, 5)"));
+    assertEquals(IN, evaluation.get(buildClaim(2)));
+    assertEquals(OUT, evaluation.get(buildClaim(5)));
+  }
 }
