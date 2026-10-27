@@ -42,10 +42,20 @@ critical(E) : val(E, severity, S), prolog(S =< 2) -> critical(E).
 % people are trapped and the situation is getting worse
 spreading(E) : val(E, trapped, 1), val(E, escalating, 1) -> spreading(E).
 
+% emergency threatening collateral damage at scale
+catastrophic(E) : val(E, collateral_risk, 1), val(E, size, S), prolog(S >= 2) -> catastrophic(E).
+
+% large-scale disaster with multiple victims
+major_disaster(E) : val(E, size, S), val(E, victims, V), prolog(S >= 2), prolog(V >= 3) -> major_disaster(E).
+
 /* Exceptions */
 life_first(E1, E2) : critical(E2), prolog(raised(E1, E2, waiting)), ~(critical(E1)) => undercut(rank(waiting, E1, E2)).
 
 no_time(E1, E2) : spreading(E1), prolog(raised(E1, E2, severity)), ~(critical(E2)) => undercut(rank(severity, E2, E1)).
+
+prevent_catastrophe(E1, E2) : catastrophic(E1), prolog(raised(E1, E2, severity)), ~(critical(E2)) => undercut(rank(severity, E2, E1)).
+
+disaster_scale(E1, E2) : major_disaster(E2), prolog(raised(E1, E2, waiting)), ~(critical(E1)), ~(major_disaster(E1)) => undercut(rank(waiting, E1, E2)).
 
 /* Preferences */
 % being behind someone is stronger than the claim alone
@@ -59,10 +69,12 @@ sup(rank(R1, _, _), rank(R2, _, _)) :- stronger(R1, R2).
 sup(claim(E1), claim(E2)) :- contender(E1), contender(E2), E1 < E2.
 
 /* Reasons hierarchy, the higher the strength value, the stronger the reason */
-strength(waiting, 5).
-strength(severity, 4).
-strength(trapped, 3).
-strength(escalating, 2).
+strength(waiting, 7).
+strength(severity, 6).
+strength(collateral_risk, 5).
+strength(trapped, 4).
+strength(escalating, 3).
+strength(size, 2).
 strength(victims, 1).
 
 stronger(R1, R2) :- strength(R1, S1), strength(R2, S2), S1 > S2.
@@ -75,6 +87,8 @@ raised(E1, E2, R) :- challenged(E2, E1, R).
 beats(waiting, V1, V2) :- V1 > V2.
 beats(severity, V1, V2) :- V1 < V2.
 % 1 if present, 0 otherwise
+beats(collateral_risk, V1, V2) :- V1 > V2.
 beats(trapped, V1, V2) :- V1 > V2.
 beats(escalating, V1, V2) :- V1 > V2.
+beats(size, V1, V2) :- V1 > V2.
 beats(victims, V1, V2) :- V1 > V2.

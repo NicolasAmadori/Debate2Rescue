@@ -11,6 +11,7 @@ public final class Config {
   // Absolute probabilities in [0, 1]
   public static final double TRAPPED_PROB = 0.10;
   public static final double ESCALATING_PROB = 0.10;
+  public static final double COLLATERAL_RISK_PROB = 0.20;
 
   // To multiply with the mean between width and height of the grid
   public static final double STATION_FREQ = 0.1;

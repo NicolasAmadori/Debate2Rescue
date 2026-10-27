@@ -67,4 +67,26 @@ public class ChooseTest {
     assertTrue(choose(moves, 5, 2, "[challenge(2, trapped, 1), challenge(2, escalating, 1)]"));
     assertEquals("challenge(2,trapped,1)", un.get(chosen).toString());
   }
+
+  @Test
+  public void testTwoValuesAreNeededForCatastrophic() throws Exception {
+    // 2 is over 5 on severity: collateral_risk or size alone do not help, both together do
+    String moves =
+        "[move(1, 2, claim), move(2, 5, claim),"
+            + " move(3, 2, challenge(5, severity, 3)), move(4, 5, answer(3, severity, 4))]";
+
+    assertTrue(choose(moves, 5, 2, "[challenge(2, collateral_risk, 1), challenge(2, size, 2)]"));
+    assertEquals("challenge(2,collateral_risk,1)", un.get(chosen).toString());
+  }
+
+  @Test
+  public void testTwoValuesAreNeededForDisasterScale() throws Exception {
+    // 1 is over 2 on waiting: size or victims alone do not help, both together do
+    String moves =
+        "[move(1, 1, claim), move(2, 2, claim),"
+            + " move(3, 1, challenge(2, waiting, 2)), move(4, 2, answer(3, waiting, 0))]";
+
+    assertTrue(choose(moves, 2, 1, "[challenge(1, size, 2), challenge(1, victims, 4)]"));
+    assertEquals("challenge(1,size,2)", un.get(chosen).toString());
+  }
 }

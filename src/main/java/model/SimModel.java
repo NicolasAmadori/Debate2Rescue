@@ -22,6 +22,7 @@ public class SimModel extends GridWorldModel {
   private final PathFinder pathFinder;
   private final EmergencyType[] emergencyTypes = EmergencyType.values();
   private final Severity[] severities = Severity.values();
+  private final Size[] sizes = Size.values();
   private final Resource[] resources = Resource.values();
 
   private int nextEmergencyId = 1;
@@ -95,6 +96,8 @@ public class SimModel extends GridWorldModel {
             random.nextInt(MAX_VICTIMS) + 1,
             random.nextDouble() < Config.TRAPPED_PROB,
             random.nextDouble() < Config.ESCALATING_PROB,
+            sizes[random.nextInt(sizes.length)],
+            random.nextDouble() < Config.COLLATERAL_RISK_PROB,
             EmergencyStatus.WAITING);
     emergencies.put(emergency.id(), emergency);
     add(EMERGENCY, pos);

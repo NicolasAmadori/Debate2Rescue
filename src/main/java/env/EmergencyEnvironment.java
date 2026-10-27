@@ -270,7 +270,9 @@ public class EmergencyEnvironment extends Environment {
                                   e.severity().esi,
                                   e.victims(),
                                   e.trapped(),
-                                  e.escalating())));
+                                  e.escalating(),
+                                  e.size().value,
+                                  e.collateralRisk())));
             });
     return percepts;
   }

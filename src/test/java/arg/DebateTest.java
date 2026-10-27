@@ -223,4 +223,86 @@ public class DebateTest {
     assertEquals(IN, evaluation.get(buildClaim(2)));
     assertEquals(OUT, evaluation.get(buildClaim(5)));
   }
+
+  @Test
+  public void testPreventCatastropheUndercutsSeverity() {
+    // 2 has lower ESI (3 vs 4), but 5 threatens collateral damage at scale (size 2, collateral_risk
+    // 1)
+    d.addContender(2);
+    d.addContender(5);
+    d.addValue(1, 5, "collateral_risk", 1);
+    d.addChallenge(5, 2, "collateral_risk");
+    d.addValue(2, 2, "severity", 3);
+    d.addChallenge(2, 5, "severity");
+    d.addValue(3, 5, "severity", 4);
+    d.addValue(4, 5, "size", 2);
+    d.addChallenge(5, 2, "size");
+
+    Map<String, String> evaluation = d.evaluate();
+    assertEquals(IN, evaluation.get("prevent_catastrophe(5, 2)"));
+    assertEquals(OUT, evaluation.get("rank(severity, 2, 5)"));
+    assertEquals(IN, evaluation.get("rank(collateral_risk, 5, 2)"));
+    assertEquals(OUT, evaluation.get(buildClaim(2)));
+    assertEquals(IN, evaluation.get(buildClaim(5)));
+  }
+
+  @Test
+  public void testCriticalStillWinsOverCatastrophic() {
+    // 2 is critical (ESI 2): severity holds against catastrophe exception
+    d.addContender(2);
+    d.addContender(5);
+    d.addValue(1, 5, "collateral_risk", 1);
+    d.addChallenge(5, 2, "collateral_risk");
+    d.addValue(2, 2, "severity", 2);
+    d.addChallenge(2, 5, "severity");
+    d.addValue(3, 5, "severity", 4);
+    d.addValue(4, 5, "size", 2);
+    d.addChallenge(5, 2, "size");
+
+    Map<String, String> evaluation = d.evaluate();
+    assertEquals(OUT, evaluation.get("prevent_catastrophe(5, 2)"));
+    assertEquals(IN, evaluation.get("rank(severity, 2, 5)"));
+    assertEquals(IN, evaluation.get(buildClaim(2)));
+    assertEquals(OUT, evaluation.get(buildClaim(5)));
+  }
+
+  @Test
+  public void testDisasterScaleUndercutsWaiting() {
+    // 1 waited more (waiting 2 vs 0), but 2 is a major disaster (size 2, victims 4)
+    d.addContender(1);
+    d.addContender(2);
+    d.addValue(1, 1, "waiting", 2);
+    d.addChallenge(1, 2, "waiting");
+    // 2 reveals it is a major disaster
+    d.addValue(2, 2, "size", 2);
+    d.addChallenge(2, 1, "size");
+    d.addValue(3, 2, "victims", 4);
+    d.addChallenge(2, 1, "victims");
+
+    Map<String, String> evaluation = d.evaluate();
+    assertEquals(IN, evaluation.get("disaster_scale(1, 2)"));
+    assertEquals(OUT, evaluation.get("rank(waiting, 1, 2)"));
+    assertEquals(OUT, evaluation.get(buildClaim(1)));
+    assertEquals(IN, evaluation.get(buildClaim(2)));
+  }
+
+  @Test
+  public void testCriticalStillWinsOverDisasterScale() {
+    // 1 is critical (ESI 1): waiting holds even against major disaster
+    d.addContender(1);
+    d.addContender(2);
+    d.addValue(1, 1, "waiting", 2);
+    d.addChallenge(1, 2, "waiting");
+    d.addValue(2, 1, "severity", 1);
+    d.addValue(3, 2, "size", 2);
+    d.addChallenge(2, 1, "size");
+    d.addValue(4, 2, "victims", 4);
+    d.addChallenge(2, 1, "victims");
+
+    Map<String, String> evaluation = d.evaluate();
+    assertEquals(OUT, evaluation.get("disaster_scale(1, 2)"));
+    assertEquals(IN, evaluation.get("rank(waiting, 1, 2)"));
+    assertEquals(IN, evaluation.get(buildClaim(1)));
+    assertEquals(OUT, evaluation.get(buildClaim(2)));
+  }
 }
