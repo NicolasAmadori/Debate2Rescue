@@ -8,18 +8,20 @@ import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Handles persistent file logging for argumentation debates. Each debate session is written to a
  * dedicated log file capturing its starting setup, debating actions (moves, turn states), and final
- * decision.
+ * decision. Also notifies registered {@link DebateEventListener} instances for view logging.
  */
 public class DebateLogger {
   private static final Logger LOGGER = Logger.getLogger(DebateLogger.class.getName());
@@ -30,6 +32,7 @@ public class DebateLogger {
 
   private final Path logDirectory;
   private final Map<Integer, DebateSession> activeSessions = new HashMap<>();
+  private final List<DebateEventListener> listeners = new CopyOnWriteArrayList<>();
 
   public DebateLogger() {
     this(Path.of("logs", LocalDateTime.now().format(EXECUTION_FOLDER_FMT)));
@@ -44,13 +47,46 @@ public class DebateLogger {
   }
 
   /**
-   * Logs the start of a debate.
+   * Registers a listener to receive debate events.
+   *
+   * @param listener the listener to add
+   */
+  public void addListener(DebateEventListener listener) {
+    if (listener != null && !listeners.contains(listener)) {
+      listeners.add(listener);
+    }
+  }
+
+  /**
+   * Removes a previously registered debate event listener.
+   *
+   * @param listener the listener to remove
+   */
+  public void removeListener(DebateEventListener listener) {
+    listeners.remove(listener);
+  }
+
+  /**
+   * Logs the start of a debate without emergency info recap.
    *
    * @param debateId unique debate id
    * @param resourceType the contested resource type
    * @param contenders list of contenders, e.g. c(1, rescuer_1)
    */
   public synchronized void logStart(int debateId, String resourceType, List<String> contenders) {
+    logStart(debateId, resourceType, contenders, Collections.emptyList());
+  }
+
+  /**
+   * Logs the start of a debate including emergency info recap for each contender.
+   *
+   * @param debateId unique debate id
+   * @param resourceType the contested resource type
+   * @param contenders list of contenders, e.g. c(1, rescuer_1)
+   * @param emergencyInfos list of formatted emergency info strings per involved rescuer
+   */
+  public synchronized void logStart(
+      int debateId, String resourceType, List<String> contenders, List<String> emergencyInfos) {
     try {
       Files.createDirectories(logDirectory);
       Path logFile = logDirectory.resolve(String.format("debate%d_%s.log", debateId, resourceType));
@@ -66,11 +102,25 @@ public class DebateLogger {
           String.format("DEBATE #%d STARTED: Resource Type [%s]\n", debateId, resourceType));
       writer.write("Timestamp: " + LocalDateTime.now().format(TIME_FMT) + "\n");
       writer.write("Contenders: " + String.join(", ", contenders) + "\n");
+      if (emergencyInfos != null && !emergencyInfos.isEmpty()) {
+        writer.write("\nContender Emergency Infos:\n");
+        for (String info : emergencyInfos) {
+          writer.write("  • " + info + "\n");
+        }
+      }
       writer.write("=================================================================\n\n");
       writer.write("--- DEBATE MOVES & TURNS ---\n");
       writer.flush();
     } catch (IOException e) {
       LOGGER.log(Level.SEVERE, "Failed to initialize debate log file for debate #" + debateId, e);
+    }
+
+    for (DebateEventListener listener : listeners) {
+      try {
+        listener.onDebateStart(debateId, resourceType, contenders, emergencyInfos);
+      } catch (Exception e) {
+        LOGGER.log(Level.WARNING, "Error notifying debate listener of start #" + debateId, e);
+      }
     }
   }
 
@@ -109,6 +159,14 @@ public class DebateLogger {
     } catch (IOException e) {
       LOGGER.log(Level.WARNING, "Failed to write move to debate log #" + debateId, e);
     }
+
+    for (DebateEventListener listener : listeners) {
+      try {
+        listener.onDebateMove(debateId, moveId, rescuer, emergency, type, content);
+      } catch (Exception e) {
+        LOGGER.log(Level.WARNING, "Error notifying debate listener of move #" + debateId, e);
+      }
+    }
   }
 
   /**
@@ -136,6 +194,14 @@ public class DebateLogger {
       session.writer.flush();
     } catch (IOException e) {
       LOGGER.log(Level.WARNING, "Failed to write status to debate log #" + debateId, e);
+    }
+
+    for (DebateEventListener listener : listeners) {
+      try {
+        listener.onDebateStatus(debateId, currentWinner, reason);
+      } catch (Exception e) {
+        LOGGER.log(Level.WARNING, "Error notifying debate listener of status #" + debateId, e);
+      }
     }
   }
 
@@ -211,10 +277,22 @@ public class DebateLogger {
     } catch (IOException e) {
       LOGGER.log(Level.SEVERE, "Failed to close debate log file for debate #" + debateId, e);
     }
+
+    for (DebateEventListener listener : listeners) {
+      try {
+        listener.onDebateEnd(debateId, resourceType, winner, losers, effectiveJustification);
+      } catch (Exception e) {
+        LOGGER.log(Level.WARNING, "Error notifying debate listener of end #" + debateId, e);
+      }
+    }
+
     return effectiveJustification;
   }
 
-  private static Integer extractEmergencyId(String contender) {
+  public static Integer extractEmergencyId(String contender) {
+    if (contender == null) {
+      return null;
+    }
     int start = contender.indexOf('(');
     int comma = contender.indexOf(',');
     if (start != -1 && comma != -1 && comma > start) {
@@ -228,6 +306,18 @@ public class DebateLogger {
     } catch (NumberFormatException ignored) {
     }
     return null;
+  }
+
+  public static String extractRescuerName(String contender) {
+    if (contender == null) {
+      return null;
+    }
+    int comma = contender.indexOf(',');
+    int close = contender.indexOf(')');
+    if (comma != -1 && close != -1 && close > comma) {
+      return contender.substring(comma + 1, close).trim();
+    }
+    return contender.trim();
   }
 
   /** Checks if a debate session is currently active. */
