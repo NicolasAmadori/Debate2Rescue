@@ -26,23 +26,21 @@ escalating_fact(_, []).
 
 /* Rules */
 
-stronger(R1, R2) :- strength(R1, S1) & strength(R2, S2) & S1 > S2.
+// My value V for reason R. The waiting value is the number of denials.
+value(Id, waiting, N) :- denials(Id, N).
+value(Id, severity, S) :- requesting(Id, _, F) & .member(severity(S), F).
+value(Id, trapped, 1) :- requesting(Id, _, F) & .member(trapped, F).
+value(Id, trapped, 0) :- requesting(Id, _, F) & not .member(trapped, F).
+value(Id, escalating, 1) :- requesting(Id, _, F) & .member(escalating, F).
+value(Id, escalating, 0) :- requesting(Id, _, F) & not .member(escalating, F).
+value(Id, victims, V) :- requesting(Id, _, F) & .member(victims(V), F).
 
-// Reason R puts emergency F1 ahead of F2.
-// The order must match the priority of the reasons hierarchy.
-beats(waiting, F1, F2) :- .member(waiting(W1), F1) & .member(waiting(W2), F2) & W1 > W2.
-beats(severity, F1, F2) :- .member(severity(S1), F1) & .member(severity(S2), F2) & S1 < S2.
-beats(trapped, F1, F2) :- .member(trapped, F1) & not .member(trapped, F2).
-beats(escalating, F1, F2) :- .member(escalating, F1) & not .member(escalating, F2).
-beats(victims, F1, F2) :- .member(victims(V1), F1) & .member(victims(V2), F2) & V1 > V2.
-
-// Reason of an attack or a reject move
-reason(attack(_, R), R).
-reason(reject(_, R), R).
-
-// Facts claimed for my emergency, including the waiting counter (number of denials)
-claim_facts(Id, RT, [waiting(N) | F]) :- requesting(Id, RT, F) & denials(Id, N).
-claim_facts(Id, RT, [waiting(0) | F]) :- requesting(Id, RT, F).
+// I attack only with a reason I really have, I am not trapped is not a reason
+worth(waiting, N) :- N > 0.
+worth(severity, _).
+worth(trapped, 1).
+worth(escalating, 1).
+worth(victims, V) :- V > 0.
 
 // F are the facts claimed for emergency E in the debate for RT
 facts(RT, E, F) :- move(RT, _, E, claim(F)).
