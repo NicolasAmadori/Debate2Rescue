@@ -1,8 +1,10 @@
 package env;
 
+import arg.DebateLogger;
 import config.Config;
 import config.ConfigValues;
 import jason.asSyntax.ASSyntax;
+import jason.asSyntax.ListTerm;
 import jason.asSyntax.Literal;
 import jason.asSyntax.NumberTerm;
 import jason.asSyntax.StringTerm;
@@ -55,6 +57,7 @@ public class EmergencyEnvironment extends Environment {
   private Thread generatorThread;
   private int simulationSpeed = 300; // Managed from the view
   private int spawnChance = 30; // Managed from the view, percentage per step
+  private final DebateLogger debateLogger = new DebateLogger();
 
   public EmergencyEnvironment() {
     // Increased the number of action threads for better concurrency handling
@@ -87,6 +90,7 @@ public class EmergencyEnvironment extends Environment {
     generatorThread.start();
 
     log("EmergencyEnvironment initialized.");
+    log("Debate logs directory: " + debateLogger.getLogDirectory());
   }
 
   @Override
@@ -192,6 +196,10 @@ public class EmergencyEnvironment extends Environment {
         case "wait_steps" -> waitSteps(intArg(action, 0));
         case "resolve_emergency" -> resolveEmergency(agName, intArg(action, 0));
         case "log" -> logAgentMessage(agName, action.getTerms());
+        case "log_debate_start" -> logDebateStart(action);
+        case "log_debate_move" -> logDebateMove(action);
+        case "log_debate_status" -> logDebateStatus(action);
+        case "log_debate_end" -> logDebateEnd(action);
         default -> {
           LOGGER.warning("Unknown or unhandled action: " + action);
           yield false;
@@ -374,6 +382,64 @@ public class EmergencyEnvironment extends Environment {
           informAgsEnvironmentChanged();
         });
     return emergency.isPresent();
+  }
+
+  public DebateLogger getDebateLogger() {
+    return debateLogger;
+  }
+
+  private boolean logDebateStart(Structure action) throws Exception {
+    int debateId = intArg(action, 0);
+    String resourceType = action.getTerm(1).toString();
+    List<String> contenders = listArg(action, 2);
+    debateLogger.logStart(debateId, resourceType, contenders);
+    log(String.format("Debate #%d started for %s between %s", debateId, resourceType, contenders));
+    return true;
+  }
+
+  private boolean logDebateMove(Structure action) throws Exception {
+    int debateId = intArg(action, 0);
+    int moveId = intArg(action, 1);
+    String rescuer = action.getTerm(2).toString();
+    int emergency = intArg(action, 3);
+    String type = action.getTerm(4).toString();
+    String content = action.getTerm(5).toString();
+    debateLogger.logMove(debateId, moveId, rescuer, emergency, type, content);
+    return true;
+  }
+
+  private boolean logDebateStatus(Structure action) throws Exception {
+    int debateId = intArg(action, 0);
+    int winner = intArg(action, 1);
+    String reason = action.getTerm(2).toString();
+    debateLogger.logStatus(debateId, winner, reason);
+    return true;
+  }
+
+  private boolean logDebateEnd(Structure action) throws Exception {
+    int debateId = intArg(action, 0);
+    String resourceType = action.getTerm(1).toString();
+    int winner = intArg(action, 2);
+    List<String> losers = listArg(action, 3);
+    String reason = action.getTerm(4).toString();
+    String justification = debateLogger.logEnd(debateId, resourceType, winner, losers, reason);
+    log(
+        String.format(
+            "Debate #%d for %s won by emergency %d (reason: %s)",
+            debateId, resourceType, winner, justification));
+    return true;
+  }
+
+  private static List<String> listArg(Structure action, int index) {
+    Term term = action.getTerm(index);
+    if (term instanceof ListTerm listTerm) {
+      List<String> items = new ArrayList<>();
+      for (Term elem : listTerm) {
+        items.add(elem.toString());
+      }
+      return items;
+    }
+    return List.of(term.toString());
   }
 
   // Utility methods
