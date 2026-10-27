@@ -105,27 +105,21 @@ moves(RT, Moves) :- .findall(move(M, E, C), move(RT, M, E, C), Moves).
 	+denials(Id, 0);
 	.send(orchestrator, tell, request(Id, RT)).
 
-/* Debate */
+/* Debate */.
 
-// First turn: claim the resource with the facts of the emergency.
-+!your_turn(RT, _)[source(orchestrator)] : requesting(Id, RT, _) & not facts(RT, Id, _) & claim_facts(Id, RT, F) <-
-	.send(orchestrator, argue, claim(RT, F)).
+// A move is played only if arg2p says it improves my position against the other emergency:
+// first answer a challenge against me, then challenge T, otherwise nothing I can say helps and I withdraw.
++!your_turn(RT, T)[source(orchestrator)] : requesting(Id, RT, _) & moves(RT, Moves) <-
+	if (unanswered(RT, Id, M, A, R) & answers(RT, Id, M, R, Answers) & arg.choose(Moves, Id, A, Answers, reject(M, R2, V))) {
+		.send(orchestrator, reject, reject(RT, M, R2, V));
+	} elif (attacks(RT, Id, T, Attacks) & arg.choose(Moves, Id, T, Attacks, attack(T, AR, AV))) {
+		.send(orchestrator, attack, attack(RT, T, AR, AV));
+	} else {
+		.send(orchestrator, concede, concede(RT));
+	}.
 
-// A move against me that I cannot reject: my claim cannot win, withdraw from the debate.
-+!your_turn(RT, _)[source(orchestrator)] : requesting(Id, RT, _) & against_me(RT, Id, M) & not defense(RT, Id, M, _) <-
-	.send(orchestrator, concede, concede(RT)).
-
-// Defend against a move with the strongest reason.
-+!your_turn(RT, _)[source(orchestrator)] : requesting(Id, RT, _) & against_me(RT, Id, M) & defense(RT, Id, M, R) <-
-	.send(orchestrator, reject, reject(RT, M, R)).
-
-// Attack the winning emergency with the strongest reason.
-+!your_turn(RT, W)[source(orchestrator)] : requesting(Id, RT, _) & can_attack(RT, Id, W, R) <-
-	.send(orchestrator, attack, attack(RT, W, R)).
-
-// Nothing new to say.
 +!your_turn(RT, _)[source(orchestrator)] <-
-	.send(orchestrator, tell, pass(RT)).
+	.send(orchestrator, concede, concede(RT)).
 
 // Atomic so the move is stored before the next turn is handled.
 @relay_move[atomic]
