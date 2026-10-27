@@ -42,26 +42,33 @@ worth(trapped, 1).
 worth(escalating, 1).
 worth(victims, V) :- V > 0.
 
-// F are the facts claimed for emergency E in the debate for RT
-facts(RT, E, F) :- move(RT, _, E, claim(F)).
+// Emergency E has a claim in the debate for RT, who conceded has not
+contender(RT, E) :- move(RT, _, E, claim).
 
-// M attacks my claim, or rejects one of my rejects, and I did not reject it yet
-// the moves of who conceded do not count, its claim is gone
-against_me(RT, Id, M) :-
-	move(RT, M, A, attack(Id, _)) & facts(RT, A, _) & not move(RT, _, Id, reject(M, _)).
-against_me(RT, Id, M) :-
-	move(RT, M, A, reject(T, _)) & facts(RT, A, _) & move(RT, T, Id, _) & not move(RT, _, Id, reject(M, _)).
+// Emergency E revealed its value for reason R
+revealed(RT, E, R) :- move(RT, _, E, attack(_, R, _)).
+revealed(RT, E, R) :- move(RT, _, E, reject(_, R, _)).
 
-// R rejects move M: my emergency is ahead of its author's for R, which is stronger than the reason of M
-// the first R found is the strongest
-defense(RT, Id, M, R) :-
-	move(RT, M, A, C) & reason(C, RM) & facts(RT, Id, F) & facts(RT, A, FA) &
-	beats(R, F, FA) & stronger(R, RM).
+// Reason R was raised between A and B, by either of them
+raised(RT, A, B, R) :- move(RT, _, A, attack(B, R, _)).
+raised(RT, A, B, R) :- move(RT, _, B, attack(A, R, _)).
 
-// I did not attack the winning emergency W yet, my emergency is ahead of it for R
-// the first R found is the strongest
-can_attack(RT, Id, W, R) :-
-	facts(RT, W, FW) & not move(RT, _, Id, attack(W, _)) & facts(RT, Id, F) & beats(R, F, FW).
+// The challenge M by A on reason R against my emergency is not answered
+unanswered(RT, Id, M, A, R) :-
+	move(RT, M, A, attack(Id, R, _)) & contender(RT, A) & not revealed(RT, Id, R).
+
+// The values I can reveal to answer the challenge M on R: my value for R first,
+// then the other ones I did not reveal yet, they can make an exception hold
+answers(RT, Id, M, R, [reject(M, R, V) | Others]) :-
+	value(Id, R, V) &
+	.findall(reject(M, R2, V2), reasons(Reasons) & .member(R2, Reasons) & R2 \== R & not revealed(RT, Id, R2) & value(Id, R2, V2), Others).
+
+// The reasons I really have that were not raised between my emergency and T yet, the strongest first
+attacks(RT, Id, T, Attacks) :-
+	.findall(attack(T, R, V), reasons(Reasons) & .member(R, Reasons) & not raised(RT, Id, T, R) & value(Id, R, V) & worth(R, V), Attacks).
+
+// The moves of the debate, as arg.deliberate and arg.choose want them
+moves(RT, Moves) :- .findall(move(M, E, C), move(RT, M, E, C), Moves).
 
 /* Initial goals */
 
