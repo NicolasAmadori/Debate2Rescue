@@ -12,12 +12,8 @@ resource_for(disaster, excavator).
 resource_for(missing, police_helicopter).
 resource_for(evacuation, helicopter).
 
-// Reasons hierarchy, the higher the strength value, the stronger the reason
-strength(waiting, 5).
-strength(severity, 4).
-strength(trapped, 3).
-strength(escalating, 2).
-strength(victims, 1).
+// Order in which the reasons are played in a debate, which reason wins is decided by arg2p
+reasons([waiting, severity, trapped, escalating, victims]).
 
 // Mapping from boolean percept values (trapped, escalating) to debate facts
 trapped_fact(true, [trapped]).
@@ -134,7 +130,7 @@ can_attack(RT, Id, W, R) :-
 // Who concedes withdraws its claim, so its moves and the ones against it stop counting.
 @relay_concede[atomic]
 +!kqml_received(orchestrator, concede, move(RT, _, E, concede), _) <-
-	.abolish(move(RT, _, E, claim(_))).
+	.abolish(move(RT, _, E, claim)).
 
 // Denied the resource: the request waits for the next debate.
 +denied(Id, RT)[source(orchestrator)] : denials(Id, N) <-
