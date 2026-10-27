@@ -105,7 +105,7 @@ moves(RT, Moves) :- .findall(move(M, E, C), move(RT, M, E, C), Moves).
 	+denials(Id, 0);
 	.send(orchestrator, tell, request(Id, RT)).
 
-/* Debate */.
+/* Debate */
 
 // A move is played only if arg2p says it improves my position against the other emergency:
 // first answer a challenge against me, then challenge T, otherwise nothing I can say helps and I withdraw.
