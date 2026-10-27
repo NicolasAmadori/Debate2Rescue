@@ -12,12 +12,8 @@ resource_for(disaster, excavator).
 resource_for(missing, police_helicopter).
 resource_for(evacuation, helicopter).
 
-// Reasons hierarchy, the higher the strength value, the stronger the reason
-strength(waiting, 5).
-strength(severity, 4).
-strength(trapped, 3).
-strength(escalating, 2).
-strength(victims, 1).
+// Order in which the reasons are played in a debate, which reason wins is decided by arg2p
+reasons([waiting, severity, trapped, escalating, victims]).
 
 // Mapping from boolean percept values (trapped, escalating) to debate facts
 trapped_fact(true, [trapped]).
@@ -30,44 +26,49 @@ escalating_fact(_, []).
 
 /* Rules */
 
-stronger(R1, R2) :- strength(R1, S1) & strength(R2, S2) & S1 > S2.
+// My value V for reason R. The waiting value is the number of denials.
+value(Id, waiting, N) :- denials(Id, N).
+value(Id, severity, S) :- requesting(Id, _, F) & .member(severity(S), F).
+value(Id, trapped, 1) :- requesting(Id, _, F) & .member(trapped, F).
+value(Id, trapped, 0) :- requesting(Id, _, F) & not .member(trapped, F).
+value(Id, escalating, 1) :- requesting(Id, _, F) & .member(escalating, F).
+value(Id, escalating, 0) :- requesting(Id, _, F) & not .member(escalating, F).
+value(Id, victims, V) :- requesting(Id, _, F) & .member(victims(V), F).
 
-// Reason R puts emergency F1 ahead of F2.
-// The order must match the priority of the reasons hierarchy.
-beats(waiting, F1, F2) :- .member(waiting(W1), F1) & .member(waiting(W2), F2) & W1 > W2.
-beats(severity, F1, F2) :- .member(severity(S1), F1) & .member(severity(S2), F2) & S1 < S2.
-beats(trapped, F1, F2) :- .member(trapped, F1) & not .member(trapped, F2).
-beats(escalating, F1, F2) :- .member(escalating, F1) & not .member(escalating, F2).
-beats(victims, F1, F2) :- .member(victims(V1), F1) & .member(victims(V2), F2) & V1 > V2.
+// I challenge only with a reason I really have, I am not trapped is not a reason
+worth(waiting, N) :- N > 0.
+worth(severity, _).
+worth(trapped, 1).
+worth(escalating, 1).
+worth(victims, V) :- V > 0.
 
-// Reason of an attack or a reject move
-reason(attack(_, R), R).
-reason(reject(_, R), R).
+// Emergency E has a claim in the debate for RT, who conceded has not
+contender(RT, E) :- move(RT, _, E, claim).
 
-// Facts claimed for my emergency, including the waiting counter (number of denials)
-claim_facts(Id, RT, [waiting(N) | F]) :- requesting(Id, RT, F) & denials(Id, N).
-claim_facts(Id, RT, [waiting(0) | F]) :- requesting(Id, RT, F).
+// Emergency E revealed its value for reason R
+revealed(RT, E, R) :- move(RT, _, E, challenge(_, R, _)).
+revealed(RT, E, R) :- move(RT, _, E, answer(_, R, _)).
 
-// F are the facts claimed for emergency E in the debate for RT
-facts(RT, E, F) :- move(RT, _, E, claim(F)).
+// Reason R was raised between A and B, by either of them
+raised(RT, A, B, R) :- move(RT, _, A, challenge(B, R, _)).
+raised(RT, A, B, R) :- move(RT, _, B, challenge(A, R, _)).
 
-// M attacks my claim, or rejects one of my rejects, and I did not reject it yet
-// the moves of who conceded do not count, its claim is gone
-against_me(RT, Id, M) :-
-	move(RT, M, A, attack(Id, _)) & facts(RT, A, _) & not move(RT, _, Id, reject(M, _)).
-against_me(RT, Id, M) :-
-	move(RT, M, A, reject(T, _)) & facts(RT, A, _) & move(RT, T, Id, _) & not move(RT, _, Id, reject(M, _)).
+// The challenge M by A on reason R against my emergency is not answered
+unanswered(RT, Id, M, A, R) :-
+	move(RT, M, A, challenge(Id, R, _)) & contender(RT, A) & not revealed(RT, Id, R).
 
-// R rejects move M: my emergency is ahead of its author's for R, which is stronger than the reason of M
-// the first R found is the strongest
-defense(RT, Id, M, R) :-
-	move(RT, M, A, C) & reason(C, RM) & facts(RT, Id, F) & facts(RT, A, FA) &
-	beats(R, F, FA) & stronger(R, RM).
+// The values I can reveal to answer the challenge M on R: my value for R first,
+// then the other ones I did not reveal yet, they can make an exception hold
+answers(RT, Id, M, R, [answer(M, R, V) | Others]) :-
+	value(Id, R, V) &
+	.findall(answer(M, R2, V2), reasons(Reasons) & .member(R2, Reasons) & R2 \== R & not revealed(RT, Id, R2) & value(Id, R2, V2), Others).
 
-// I did not attack the winning emergency W yet, my emergency is ahead of it for R
-// the first R found is the strongest
-can_attack(RT, Id, W, R) :-
-	facts(RT, W, FW) & not move(RT, _, Id, attack(W, _)) & facts(RT, Id, F) & beats(R, F, FW).
+// The reasons I really have that were not raised between my emergency and T yet, the strongest first
+challenges(RT, Id, T, Challenges) :-
+	.findall(challenge(T, R, V), reasons(Reasons) & .member(R, Reasons) & not raised(RT, Id, T, R) & value(Id, R, V) & worth(R, V), Challenges).
+
+// The moves of the debate, as arg.deliberate and arg.choose want them
+moves(RT, Moves) :- .findall(move(M, E, C), move(RT, M, E, C), Moves).
 
 /* Initial goals */
 
@@ -106,35 +107,29 @@ can_attack(RT, Id, W, R) :-
 
 /* Debate */
 
-// First turn: claim the resource with the facts of the emergency.
-+!your_turn(RT, _)[source(orchestrator)] : requesting(Id, RT, _) & not facts(RT, Id, _) & claim_facts(Id, RT, F) <-
-	.send(orchestrator, argue, claim(RT, F)).
+// A move is played only if arg2p says it improves my position against the other emergency:
+// first answer a challenge against me, then challenge T, otherwise nothing I can say helps and I withdraw.
++!your_turn(RT, T)[source(orchestrator)] : requesting(Id, RT, _) & moves(RT, Moves) <-
+	if (unanswered(RT, Id, M, A, R) & answers(RT, Id, M, R, Answers) & arg.choose(Moves, Id, A, Answers, answer(M, R2, V))) {
+		.send(orchestrator, answer, answer(RT, M, R2, V));
+	} elif (challenges(RT, Id, T, Challenges) & arg.choose(Moves, Id, T, Challenges, challenge(T, AR, AV))) {
+		.send(orchestrator, challenge, challenge(RT, T, AR, AV));
+	} else {
+		.send(orchestrator, concede, concede(RT));
+	}.
 
-// A move against me that I cannot reject: my claim cannot win, withdraw from the debate.
-+!your_turn(RT, _)[source(orchestrator)] : requesting(Id, RT, _) & against_me(RT, Id, M) & not defense(RT, Id, M, _) <-
-	.send(orchestrator, concede, concede(RT)).
-
-// Defend against a move with the strongest reason.
-+!your_turn(RT, _)[source(orchestrator)] : requesting(Id, RT, _) & against_me(RT, Id, M) & defense(RT, Id, M, R) <-
-	.send(orchestrator, reject, reject(RT, M, R)).
-
-// Attack the winning emergency with the strongest reason.
-+!your_turn(RT, W)[source(orchestrator)] : requesting(Id, RT, _) & can_attack(RT, Id, W, R) <-
-	.send(orchestrator, attack, attack(RT, W, R)).
-
-// Nothing new to say.
 +!your_turn(RT, _)[source(orchestrator)] <-
-	.send(orchestrator, tell, pass(RT)).
+	.send(orchestrator, concede, concede(RT)).
 
 // Atomic so the move is stored before the next turn is handled.
 @relay_move[atomic]
-+!kqml_received(orchestrator, Performative, move(RT, M, E, C), _) : .member(Performative, [argue, attack, reject]) <-
++!kqml_received(orchestrator, Performative, move(RT, M, E, C), _) : .member(Performative, [argue, challenge, answer]) <-
 	+move(RT, M, E, C).
 
 // Who concedes withdraws its claim, so its moves and the ones against it stop counting.
 @relay_concede[atomic]
 +!kqml_received(orchestrator, concede, move(RT, _, E, concede), _) <-
-	.abolish(move(RT, _, E, claim(_))).
+	.abolish(move(RT, _, E, claim)).
 
 // Denied the resource: the request waits for the next debate.
 +denied(Id, RT)[source(orchestrator)] : denials(Id, N) <-
