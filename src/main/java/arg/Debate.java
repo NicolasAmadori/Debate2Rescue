@@ -21,7 +21,16 @@ public class Debate {
 
   // the top rules whose labels are returned by evaluate
   private static final List<String> RETURNED =
-      List.of("claim(", "rank(", "compare(", "challenge(", "answer(", "life_first(", "no_time(");
+      List.of(
+          "claim(",
+          "rank(",
+          "compare(",
+          "challenge(",
+          "answer(",
+          "life_first(",
+          "no_time(",
+          "prevent_catastrophe(",
+          "disaster_scale(");
 
   // from the best to the worst label for who makes the argument
   private static final List<String> LABELS = List.of("in", "und", "out");

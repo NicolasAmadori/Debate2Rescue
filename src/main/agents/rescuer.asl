@@ -13,7 +13,7 @@ resource_for(missing, police_helicopter).
 resource_for(evacuation, helicopter).
 
 // Order in which the reasons are played in a debate, which reason wins is decided by arg2p
-reasons([waiting, severity, trapped, escalating, victims]).
+reasons([waiting, severity, collateral_risk, trapped, escalating, size, victims]).
 
 // Mapping from boolean percept values (trapped, escalating) to debate facts
 trapped_fact(true, [trapped]).
@@ -24,22 +24,31 @@ escalating_fact(true, [escalating]).
 escalating_fact(false, []).
 escalating_fact(_, []).
 
+collateral_fact(true, [collateral_risk]).
+collateral_fact(false, []).
+collateral_fact(_, []).
+
 /* Rules */
 
 // My value V for reason R. The waiting value is the number of denials.
 value(Id, waiting, N) :- denials(Id, N).
 value(Id, severity, S) :- requesting(Id, _, F) & .member(severity(S), F).
+value(Id, collateral_risk, 1) :- requesting(Id, _, F) & .member(collateral_risk, F).
+value(Id, collateral_risk, 0) :- requesting(Id, _, F) & not .member(collateral_risk, F).
 value(Id, trapped, 1) :- requesting(Id, _, F) & .member(trapped, F).
 value(Id, trapped, 0) :- requesting(Id, _, F) & not .member(trapped, F).
 value(Id, escalating, 1) :- requesting(Id, _, F) & .member(escalating, F).
 value(Id, escalating, 0) :- requesting(Id, _, F) & not .member(escalating, F).
+value(Id, size, S) :- requesting(Id, _, F) & .member(size(S), F).
 value(Id, victims, V) :- requesting(Id, _, F) & .member(victims(V), F).
 
 // I challenge only with a reason I really have, I am not trapped is not a reason
 worth(waiting, N) :- N > 0.
 worth(severity, _).
+worth(collateral_risk, 1).
 worth(trapped, 1).
 worth(escalating, 1).
+worth(size, S) :- S > 0.
 worth(victims, V) :- V > 0.
 
 // Emergency E has a claim in the debate for RT, who conceded has not
@@ -86,21 +95,22 @@ moves(RT, Moves) :- .findall(move(M, E, C), move(RT, M, E, C), Moves).
 +!handle(Id, X, Y)[source(orchestrator)] <-
 	!go_to(X, Y);
 	start_rescue(Id);
-	?emergency_info(Id, Type, Severity, Victims, Trapped, Escalating);
-	!evaluate(Id, Type, Severity, Victims, Trapped, Escalating).
+	?emergency_info(Id, Type, Severity, Victims, Trapped, Escalating, Size, CollateralRisk);
+	!evaluate(Id, Type, Severity, Victims, Trapped, Escalating, Size, CollateralRisk).
 
 // Requesting the resource required by the emergency type.
-+!evaluate(Id, Type, Severity, Victims, Trapped, Escalating) : resource_for(Type, Resource) <-
-	!make_request(Id, Resource, Severity, Victims, Trapped, Escalating).
++!evaluate(Id, Type, Severity, Victims, Trapped, Escalating, Size, CollateralRisk) : resource_for(Type, Resource) <-
+	!make_request(Id, Resource, Severity, Victims, Trapped, Escalating, Size, CollateralRisk).
 
 // Fallback: if the emergency type has no mapping, request a helicopter.
-+!evaluate(Id, Type, Severity, Victims, Trapped, Escalating) <-
-	!make_request(Id, helicopter, Severity, Victims, Trapped, Escalating).
++!evaluate(Id, Type, Severity, Victims, Trapped, Escalating, Size, CollateralRisk) <-
+	!make_request(Id, helicopter, Severity, Victims, Trapped, Escalating, Size, CollateralRisk).
 
-+!make_request(Id, RT, Severity, Victims, Trapped, Escalating) <-
++!make_request(Id, RT, Severity, Victims, Trapped, Escalating, Size, CollateralRisk) <-
 	?trapped_fact(Trapped, FT);
 	?escalating_fact(Escalating, FE);
-	.concat(FT, FE, [severity(Severity), victims(Victims)], Facts);
+	?collateral_fact(CollateralRisk, FC);
+	.concat(FT, FE, FC, [severity(Severity), victims(Victims), size(Size)], Facts);
 	+requesting(Id, RT, Facts);
 	+denials(Id, 0);
 	.send(orchestrator, tell, request(Id, RT)).

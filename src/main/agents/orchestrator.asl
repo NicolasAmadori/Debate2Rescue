@@ -28,7 +28,7 @@ ahead(E, X, Labels) :- .member(label(rank(_, X, E), L), Labels) & L \== out.
 
 // Reason is why the winner is winning
 winning_reason(Labels, Reason) :-
-	.findall(C, .member(label(C, in), Labels) & (C = rank(_, _, _) | C = life_first(_, _) | C = no_time(_, _)), Reason).
+	.findall(C, .member(label(C, in), Labels) & (C = rank(_, _, _) | C = life_first(_, _) | C = no_time(_, _) | C = prevent_catastrophe(_, _) | C = disaster_scale(_, _)), Reason).
 
 // E challenges who is ahead of it, otherwise the winning emergency W
 target(E, _, Labels, X) :- ahead(E, X, Labels).
