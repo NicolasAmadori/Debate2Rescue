@@ -1,5 +1,6 @@
 package env;
 
+import arg.DebateEventListener;
 import arg.DebateLogger;
 import config.Config;
 import config.ConfigValues;
@@ -26,6 +27,7 @@ import model.Pilot;
 import model.Rescuer;
 import model.Responder;
 import model.SimModel;
+import view.LogCategory;
 import view.SimConfigDialog;
 import view.View;
 import view.ViewImpl;
@@ -81,6 +83,11 @@ public class EmergencyEnvironment extends Environment {
     view.setOnSpawnChanceChange(chance -> spawnChance = chance);
     view.setOnMaxEmergenciesChange(max -> maxEmergencies = max);
 
+    DebateEventListener debateListener = view.getDebateListener();
+    if (debateListener != null) {
+      debateLogger.addListener(debateListener);
+    }
+
     // Spawning dynamic rescuers asynchronously
     new Thread(this::spawnInitialAgents, "agent-spawner").start();
 
@@ -89,8 +96,8 @@ public class EmergencyEnvironment extends Environment {
     generatorThread.setDaemon(true);
     generatorThread.start();
 
-    log("EmergencyEnvironment initialized.");
-    log("Debate logs directory: " + debateLogger.getLogDirectory());
+    log(LogCategory.NON_GUI, "EmergencyEnvironment initialized.");
+    log(LogCategory.NON_GUI, "Debate logs directory: " + debateLogger.getLogDirectory());
   }
 
   @Override
@@ -172,10 +179,9 @@ public class EmergencyEnvironment extends Environment {
               .spawnEmergency()
               .ifPresent(
                   e -> {
-                    log("Generated: " + e);
+                    log(LogCategory.GUI_VISIBLE, "Generated: " + e);
                     informAgsEnvironmentChanged();
                   });
-          ;
         }
       }
     } catch (InterruptedException e) {
@@ -272,7 +278,9 @@ public class EmergencyEnvironment extends Environment {
   // Internal actions
 
   private boolean join(Responder r) {
-    log(r.name() + " joined at station (" + r.station().x + "," + r.station().y + ")");
+    log(
+        LogCategory.GUI_VISIBLE,
+        r.name() + " joined at station (" + r.station().x + "," + r.station().y + ")");
     return true;
   }
 
@@ -319,7 +327,11 @@ public class EmergencyEnvironment extends Environment {
    */
   private boolean assign(String rescuerId, int emergencyId) {
     Optional<Emergency> emergency = model.setEmergencyStatus(emergencyId, EmergencyStatus.ASSIGNED);
-    emergency.ifPresent(e -> log("Emergency " + emergencyId + " assigned to rescuer " + rescuerId));
+    emergency.ifPresent(
+        e ->
+            log(
+                LogCategory.NON_GUI,
+                "Emergency " + emergencyId + " assigned to rescuer " + rescuerId));
     return emergency.isPresent();
   }
 
@@ -334,7 +346,8 @@ public class EmergencyEnvironment extends Environment {
   private boolean startRescue(String agName, int emergencyId) {
     Optional<Emergency> emergency =
         model.setEmergencyStatus(emergencyId, EmergencyStatus.IN_PROGRESS);
-    emergency.ifPresent(e -> log(agName + " reached emergency " + emergencyId + ": " + e));
+    emergency.ifPresent(
+        e -> log(LogCategory.GUI_VISIBLE, agName + " reached emergency " + emergencyId + ": " + e));
     return emergency.isPresent();
   }
 
@@ -362,7 +375,7 @@ public class EmergencyEnvironment extends Environment {
    * @return true after logging the message
    */
   private boolean logAgentMessage(String agName, List<Term> terms) {
-    log(agName + ": " + concatTerms(terms));
+    log(LogCategory.NON_GUI, agName + ": " + concatTerms(terms));
     return true;
   }
 
@@ -378,7 +391,7 @@ public class EmergencyEnvironment extends Environment {
     Optional<Emergency> emergency = model.resolveEmergency(id);
     emergency.ifPresent(
         e -> {
-          log("Emergency " + id + " resolved by: " + agName);
+          log(LogCategory.NON_GUI, "Emergency " + id + " resolved by: " + agName);
           informAgsEnvironmentChanged();
         });
     return emergency.isPresent();
@@ -392,8 +405,34 @@ public class EmergencyEnvironment extends Environment {
     int debateId = intArg(action, 0);
     String resourceType = action.getTerm(1).toString();
     List<String> contenders = listArg(action, 2);
-    debateLogger.logStart(debateId, resourceType, contenders);
-    log(String.format("Debate #%d started for %s between %s", debateId, resourceType, contenders));
+
+    List<String> emergencyInfos = new ArrayList<>();
+    for (String contender : contenders) {
+      Integer emId = DebateLogger.extractEmergencyId(contender);
+      String rescuer = DebateLogger.extractRescuerName(contender);
+      if (emId != null) {
+        Emergency e = model.getEmergency(emId).orElse(null);
+        if (e != null) {
+          emergencyInfos.add(
+              String.format(
+                  "%s (Emergency #%d): %s | Severity: %s (ESI %d) | Victims: %d | Trapped: %s | Escalating: %s",
+                  rescuer,
+                  e.id(),
+                  e.type(),
+                  e.severity(),
+                  e.severity().esi,
+                  e.victims(),
+                  e.trapped() ? "yes" : "no",
+                  e.escalating() ? "yes" : "no"));
+        } else {
+          emergencyInfos.add(rescuer + " (Emergency #" + emId + ")");
+        }
+      } else {
+        emergencyInfos.add(contender);
+      }
+    }
+
+    debateLogger.logStart(debateId, resourceType, contenders, emergencyInfos);
     return true;
   }
 
@@ -422,11 +461,7 @@ public class EmergencyEnvironment extends Environment {
     int winner = intArg(action, 2);
     List<String> losers = listArg(action, 3);
     String reason = action.getTerm(4).toString();
-    String justification = debateLogger.logEnd(debateId, resourceType, winner, losers, reason);
-    log(
-        String.format(
-            "Debate #%d for %s won by emergency %d (reason: %s)",
-            debateId, resourceType, winner, justification));
+    debateLogger.logEnd(debateId, resourceType, winner, losers, reason);
     return true;
   }
 
@@ -445,8 +480,12 @@ public class EmergencyEnvironment extends Environment {
   // Utility methods
 
   private void log(String message) {
+    log(LogCategory.NON_GUI, message);
+  }
+
+  private void log(LogCategory category, String message) {
     LOGGER.info(message);
-    view.log(message);
+    view.log(category, message);
   }
 
   private static int intArg(Structure action, int index) throws Exception {

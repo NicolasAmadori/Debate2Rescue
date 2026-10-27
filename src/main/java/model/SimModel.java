@@ -121,6 +121,16 @@ public class SimModel extends GridWorldModel {
   }
 
   /***
+   * Gets the emergency with a given identifier.
+   *
+   * @param emergencyId the emergency identifier
+   * @return the emergency, or empty if not found.
+   */
+  public synchronized Optional<Emergency> getEmergency(int emergencyId) {
+    return Optional.ofNullable(emergencies.get(emergencyId));
+  }
+
+  /***
    * Gets the emergency at a given position.
    *
    * @param position the location to check

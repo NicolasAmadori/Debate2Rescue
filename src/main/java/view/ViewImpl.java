@@ -1,5 +1,6 @@
 package view;
 
+import arg.DebateEventListener;
 import jason.environment.grid.GridWorldView;
 import jason.environment.grid.Location;
 import java.awt.BorderLayout;
@@ -118,7 +119,17 @@ public class ViewImpl extends GridWorldView implements View {
 
   @Override
   public void log(String message) {
-    SwingUtilities.invokeLater(() -> side.log(message));
+    log(LogCategory.NON_GUI, message);
+  }
+
+  @Override
+  public void log(LogCategory category, String message) {
+    SwingUtilities.invokeLater(() -> side.log(category, message));
+  }
+
+  @Override
+  public DebateEventListener getDebateListener() {
+    return side.getDebateListener();
   }
 
   @Override
