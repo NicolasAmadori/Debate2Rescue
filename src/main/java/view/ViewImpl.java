@@ -8,17 +8,26 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Toolkit;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.IntConsumer;
+import javax.imageio.ImageIO;
 import javax.swing.SwingUtilities;
 import model.Pilot;
 import model.Rescuer;
+import model.Resource;
 import model.Responder;
 import model.SimModel;
 
 public class ViewImpl extends GridWorldView implements View {
 
+  private static final Map<Resource, BufferedImage> RESOURCE_ICONS = loadResourceIcons();
   private static final Color STATION_COLOR = Color.DARK_GRAY;
   private static final Color EMERGENCY_COLOR = Color.RED;
   private static final int GRID_SIZE_PX = 600;
@@ -39,7 +48,7 @@ public class ViewImpl extends GridWorldView implements View {
 
     getCanvas().setBackground(Color.WHITE);
     getCanvas().setPreferredSize(new Dimension(width, width));
-    this.side = new SidePanel();
+    this.side = new SidePanel(model.getWidth(), model.getHeight());
     getContentPane().add(side, BorderLayout.EAST);
     pack();
   }
@@ -85,7 +94,7 @@ public class ViewImpl extends GridWorldView implements View {
     int slotsPerSide = (int) Math.ceil(Math.sqrt(here.size()));
     int slotW = cellSizeW / Math.max(1, slotsPerSide);
     int slotH = height / Math.max(1, slotsPerSide);
-    int gap = Math.max(1, Math.min(slotW, slotH) / 6);
+    int gap = Math.max(1, Math.min(slotW, slotH) / 10);
     for (int i = 0; i < here.size(); i++) {
       int slotX = x * cellSizeW + (i % slotsPerSide) * slotW;
       int slotY = top + (i / slotsPerSide) * slotH;
@@ -97,6 +106,13 @@ public class ViewImpl extends GridWorldView implements View {
           slotY + (slotH - diameter) / 2 + 1,
           diameter,
           diameter);
+      if (here.get(i) instanceof Pilot pilot) {
+        BufferedImage icon = RESOURCE_ICONS.get(pilot.resource());
+        int iconSize = diameter;
+        int iconX = slotX + (slotW - iconSize) / 2 + 1;
+        int iconY = slotY + (slotH - iconSize) / 2 + 1;
+        g.drawImage(icon, iconX, iconY, iconSize, iconSize, null);
+      }
     }
   }
 
@@ -108,6 +124,16 @@ public class ViewImpl extends GridWorldView implements View {
   @Override
   public void setOnSpeedChange(IntConsumer onSpeedChange) {
     SwingUtilities.invokeLater(() -> side.setOnSpeedChange(onSpeedChange));
+  }
+
+  @Override
+  public void setOnSpawnChanceChange(IntConsumer onSpawnChanceChange) {
+    SwingUtilities.invokeLater(() -> side.setOnSpawnChanceChange(onSpawnChanceChange));
+  }
+
+  @Override
+  public void setOnMaxEmergenciesChange(IntConsumer onMaxEmergenciesChange) {
+    SwingUtilities.invokeLater(() -> side.setOnMaxEmergenciesChange(onMaxEmergenciesChange));
   }
 
   /** Draws a station as a striped cell */
@@ -137,6 +163,26 @@ public class ViewImpl extends GridWorldView implements View {
       case Rescuer r -> AgentType.RESCUER.getColor();
       case Pilot p -> AgentType.PILOT.getColor();
     };
+  }
+
+  private static Map<Resource, BufferedImage> loadResourceIcons() {
+    Map<Resource, BufferedImage> icons = new EnumMap<>(Resource.class);
+    for (Resource resource : Resource.values()) {
+      try (InputStream stream =
+          ViewImpl.class.getClassLoader().getResourceAsStream(resource.path)) {
+        if (stream == null) {
+          throw new IllegalStateException("Missing resource icon: " + resource.path);
+        }
+        BufferedImage image = ImageIO.read(stream);
+        if (image == null) {
+          throw new IllegalStateException("Unsupported resource icon: " + resource.path);
+        }
+        icons.put(resource, image);
+      } catch (IOException exception) {
+        throw new ExceptionInInitializerError(exception);
+      }
+    }
+    return Collections.unmodifiableMap(icons);
   }
 
   private SimModel model() {

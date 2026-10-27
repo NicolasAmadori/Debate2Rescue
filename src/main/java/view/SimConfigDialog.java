@@ -1,5 +1,6 @@
 package view;
 
+import config.Config;
 import config.ConfigValues;
 import java.awt.GridLayout;
 import java.util.Optional;
@@ -8,26 +9,31 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
+import model.Resource;
 
 /** Asks the grid size before the simulation starts */
 public final class SimConfigDialog {
 
   // Grid values
-  private static final int MIN_SIZE = 5;
+  private static final int MIN_SIZE = 10;
   private static final int MAX_SIZE = 50;
   private static final int DEFAULT_SIZE = 20;
   // Stations values
   private static final int STATIONS_MIN = 1;
-  private static final int STATIONS_MAX = 10;
-  private static final int DEFAULT_STATIONS = 2;
+  private static final int STATIONS_MAX = Config.getMaxNumStations(MAX_SIZE, MAX_SIZE);
+  private static final int DEFAULT_STATIONS = Config.getNumStations(DEFAULT_SIZE, DEFAULT_SIZE);
+  // Obstacles values
+  private static final int OBSTACLES_MIN = 0;
+  private static final int OBSTACLES_MAX = Config.getMaxNumObstacles(MAX_SIZE, MAX_SIZE);
+  private static final int DEFAULT_OBSTACLES = Config.getNumObstacles(DEFAULT_SIZE, DEFAULT_SIZE);
   // Rescuers values
   private static final int RESCUERS_MIN = 1;
-  private static final int RESCUERS_MAX = 30;
-  private static final int DEFAULT_RESCUERS = 5;
+  private static final int RESCUERS_MAX = STATIONS_MAX * Config.MAX_RESCUER_FREQ;
+  private static final int DEFAULT_RESCUERS = DEFAULT_STATIONS * Config.RESCUER_FREQ;
   // Pilots values
-  private static final int PILOTS_MIN = 1;
-  private static final int PILOTS_MAX = 15;
-  private static final int DEFAULT_PILOTS = 2;
+  private static final int PILOTS_MIN = Resource.values().length; // At least one pilot per resource
+  private static final int PILOTS_MAX = STATIONS_MAX * Config.MAX_PILOT_FREQ;
+  private static final int DEFAULT_PILOTS = PILOTS_MIN;
 
   private SimConfigDialog() {}
 
@@ -41,6 +47,8 @@ public final class SimConfigDialog {
     JSpinner rows = new JSpinner(new SpinnerNumberModel(DEFAULT_SIZE, MIN_SIZE, MAX_SIZE, 1));
     JSpinner stations =
         new JSpinner(new SpinnerNumberModel(DEFAULT_STATIONS, STATIONS_MIN, STATIONS_MAX, 1));
+    JSpinner obstacles =
+        new JSpinner(new SpinnerNumberModel(DEFAULT_OBSTACLES, OBSTACLES_MIN, OBSTACLES_MAX, 1));
     JSpinner rescuers =
         new JSpinner(new SpinnerNumberModel(DEFAULT_RESCUERS, RESCUERS_MIN, RESCUERS_MAX, 1));
     JSpinner pilots =
@@ -53,6 +61,8 @@ public final class SimConfigDialog {
     panel.add(rows);
     panel.add(new JLabel("Stations count"));
     panel.add(stations);
+    panel.add(new JLabel("Obstacles count"));
+    panel.add(obstacles);
     panel.add(new JLabel("Rescuers count"));
     panel.add(rescuers);
     panel.add(new JLabel("Pilots count"));
@@ -68,13 +78,23 @@ public final class SimConfigDialog {
     if (choice != JOptionPane.OK_OPTION) {
       return Optional.empty();
     }
+    int columnsValue = (int) columns.getValue();
+    int rowsValue = (int) rows.getValue();
+    int stationsValue =
+        Math.min((int) stations.getValue(), Config.getMaxNumStations(columnsValue, rowsValue));
+    int obstaclesValue =
+        Math.min((int) obstacles.getValue(), Config.getMaxNumObstacles(columnsValue, rowsValue));
+    int rescuersValue =
+        Math.min((int) rescuers.getValue(), stationsValue * Config.MAX_RESCUER_FREQ);
+    rescuersValue = Math.max(rescuersValue, stationsValue); // At least one rescuer per station
+    int pilotsValue = Math.min((int) pilots.getValue(), stationsValue * Config.MAX_PILOT_FREQ);
+    pilotsValue = Math.max(pilotsValue, stationsValue); // At least one pilot per station
+    pilotsValue =
+        Math.max(pilotsValue, Resource.values().length); // At least one pilot per resource
+
     ConfigValues config =
         new ConfigValues(
-            (int) columns.getValue(),
-            (int) rows.getValue(),
-            (int) stations.getValue(),
-            (int) rescuers.getValue(),
-            (int) pilots.getValue());
+            columnsValue, rowsValue, stationsValue, obstaclesValue, rescuersValue, pilotsValue);
     return Optional.of(config);
   }
 }

@@ -1,9 +1,11 @@
 package env;
 
+import config.Config;
 import config.ConfigValues;
 import jason.asSyntax.ASSyntax;
 import jason.asSyntax.Literal;
 import jason.asSyntax.NumberTerm;
+import jason.asSyntax.StringTerm;
 import jason.asSyntax.Structure;
 import jason.asSyntax.Term;
 import jason.environment.Environment;
@@ -44,15 +46,15 @@ public class EmergencyEnvironment extends Environment {
 
   // Emergency generation
   private static final int ACTION_THREADS = 20;
-  private static final int SPAWN_CHANCE_PERCENTAGE = 90;
-  private static final int MAX_EMERGENCIES = 20;
 
   private SimModel model;
   private View view;
   private ConfigValues config;
+  private int maxEmergencies;
   private final Random random = new Random();
   private Thread generatorThread;
   private int simulationSpeed = 300; // Managed from the view
+  private int spawnChance = 30; // Managed from the view, percentage per step
 
   public EmergencyEnvironment() {
     // Increased the number of action threads for better concurrency handling
@@ -63,10 +65,18 @@ public class EmergencyEnvironment extends Environment {
   public void init(String[] args) {
     super.init(args);
     config = getConfigValues(args);
+    maxEmergencies = Config.getMaxNumEmergencies(config.gridWidth(), config.gridHeight());
 
-    model = new SimModel(config.gridWidth(), config.gridHeight(), config.stationsCount());
+    model =
+        new SimModel(
+            config.gridWidth(),
+            config.gridHeight(),
+            config.stationsCount(),
+            config.obstaclesCount());
     view = new ViewImpl(model);
     view.setOnSpeedChange(speed -> simulationSpeed = speed);
+    view.setOnSpawnChanceChange(chance -> spawnChance = chance);
+    view.setOnMaxEmergenciesChange(max -> maxEmergencies = max);
 
     // Spawning dynamic rescuers asynchronously
     new Thread(this::spawnInitialAgents, "agent-spawner").start();
@@ -89,14 +99,15 @@ public class EmergencyEnvironment extends Environment {
 
   private ConfigValues getConfigValues(String[] args) {
     ConfigValues configValues;
-    if (args.length == 5) {
+    if (args.length == 6) {
       configValues =
           new ConfigValues(
               Integer.parseInt(args[0]),
               Integer.parseInt(args[1]),
               Integer.parseInt(args[2]),
               Integer.parseInt(args[3]),
-              Integer.parseInt(args[4]));
+              Integer.parseInt(args[4]),
+              Integer.parseInt(args[5]));
     } else {
       Optional<ConfigValues> chosen = SimConfigDialog.ask();
       if (chosen.isEmpty()) {
@@ -111,7 +122,7 @@ public class EmergencyEnvironment extends Environment {
   private void spawnInitialAgents() {
     try {
       // Wait for the MAS environment to complete initialization
-      Thread.sleep(150);
+      Thread.sleep(200);
       spawnAgents(PILOT, config.pilotsCount());
       spawnAgents(RESCUER, config.rescuersCount());
     } catch (InterruptedException e) {
@@ -152,8 +163,7 @@ public class EmergencyEnvironment extends Environment {
     try {
       while (!Thread.currentThread().isInterrupted()) {
         Thread.sleep(simulationSpeed);
-        if (random.nextInt(100) < SPAWN_CHANCE_PERCENTAGE
-            && model.getEmergencies().size() < MAX_EMERGENCIES) {
+        if (random.nextInt(100) < spawnChance && model.getEmergencies().size() < maxEmergencies) {
           model
               .spawnEmergency()
               .ifPresent(
@@ -171,17 +181,17 @@ public class EmergencyEnvironment extends Environment {
 
   @Override
   public boolean executeAction(String agName, Structure action) {
-    log(agName + " executing action: " + action);
-
     try {
       return switch (action.getFunctor()) {
         case "join_as_rescuer" -> joinAsRescuer(agName);
         case "join_as_pilot" -> joinAsPilot(agName);
         case "move_towards" ->
             moveTowards(agName, new Location(intArg(action, 0), intArg(action, 1)));
+        case "assign" -> assign(action.getTerm(0).toString(), intArg(action, 1));
         case "start_rescue" -> startRescue(agName, intArg(action, 0));
         case "wait_steps" -> waitSteps(intArg(action, 0));
         case "resolve_emergency" -> resolveEmergency(agName, intArg(action, 0));
+        case "log" -> logAgentMessage(agName, action.getTerms());
         default -> {
           LOGGER.warning("Unknown or unhandled action: " + action);
           yield false;
@@ -242,9 +252,11 @@ public class EmergencyEnvironment extends Environment {
                               literal(
                                   PERCEPT_EMERGENCY_INFO,
                                   e.id(),
-                                  e.type().colorCode,
+                                  e.type().name().toLowerCase(),
                                   e.severity().esi,
-                                  e.victims())));
+                                  e.victims(),
+                                  e.trapped(),
+                                  e.escalating())));
             });
     return percepts;
   }
@@ -291,16 +303,30 @@ public class EmergencyEnvironment extends Environment {
   }
 
   /**
+   * AgentSpeak Internal action: assign. Assigns a rescuer to the specified emergency.
+   *
+   * @param rescuerId the ID of the rescuer being assigned to the emergency
+   * @param emergencyId the ID of the emergency to be assigned
+   * @return true if the assignment was successful, false otherwise
+   */
+  private boolean assign(String rescuerId, int emergencyId) {
+    Optional<Emergency> emergency = model.setEmergencyStatus(emergencyId, EmergencyStatus.ASSIGNED);
+    emergency.ifPresent(e -> log("Emergency " + emergencyId + " assigned to rescuer " + rescuerId));
+    return emergency.isPresent();
+  }
+
+  /**
    * AgentSpeak Internal action: start_rescue. Starts the rescue operation for the specified
    * emergency by the given agent.
    *
    * @param agName the name of the agent performing the rescue
-   * @param id the ID of the emergency to be rescued
+   * @param emergencyId the ID of the emergency to be rescued
    * @return true if the rescue operation was successfully started, false otherwise
    */
-  private boolean startRescue(String agName, int id) {
-    Optional<Emergency> emergency = model.setEmergencyStatus(id, EmergencyStatus.IN_PROGRESS);
-    emergency.ifPresent(e -> log(agName + " reached emergency " + id + ": " + e));
+  private boolean startRescue(String agName, int emergencyId) {
+    Optional<Emergency> emergency =
+        model.setEmergencyStatus(emergencyId, EmergencyStatus.IN_PROGRESS);
+    emergency.ifPresent(e -> log(agName + " reached emergency " + emergencyId + ": " + e));
     return emergency.isPresent();
   }
 
@@ -316,6 +342,19 @@ public class EmergencyEnvironment extends Environment {
     for (int i = 0; i < steps; i++) {
       Thread.sleep(simulationSpeed);
     }
+    return true;
+  }
+
+  /**
+   * AgentSpeak Internal action: log. Logs a message from the specified agent to both the console
+   * and the view, concatenating the provided terms.
+   *
+   * @param agName the name of the agent logging the message
+   * @param terms the terms to be concatenated and logged as the message
+   * @return true after logging the message
+   */
+  private boolean logAgentMessage(String agName, List<Term> terms) {
+    log(agName + ": " + concatTerms(terms));
     return true;
   }
 
@@ -346,6 +385,14 @@ public class EmergencyEnvironment extends Environment {
 
   private static int intArg(Structure action, int index) throws Exception {
     return (int) ((NumberTerm) action.getTerm(index)).solve();
+  }
+
+  private static String concatTerms(List<Term> terms) {
+    StringBuilder text = new StringBuilder();
+    for (Term term : terms) {
+      text.append(term instanceof StringTerm s ? s.getString() : term.toString());
+    }
+    return text.toString();
   }
 
   /**
