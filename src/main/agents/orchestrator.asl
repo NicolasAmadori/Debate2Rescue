@@ -7,6 +7,9 @@
 // steps for the request collection
 window_steps(5).
 
+// id of the last debate started
+debate_count(0).
+
 // id of the last move made in a debate
 move_count(0).
 
@@ -109,10 +112,15 @@ target(E, W, _, W) :- E \== W.
 			!grant(E, RT);
 		}
 	} else {
-		.print("Debate for ", RT, " between ", Order);
+		?debate_count(LastDId);
+		DId = LastDId + 1;
+		-+debate_count(DId);
+		+debate_id(RT, DId);
 		+debate(RT, Order);
-		for (.member(c(E, _), Order)) {
-			!add_claim(RT, E);
+		log_debate_start(DId, RT, Order);
+		.print("Debate #", DId, " for ", RT, " between ", Order);
+		for (.member(c(E, R), Order)) {
+			!add_claim(RT, E, R);
 		}
 		!next_turn(RT);
 	}.
@@ -120,25 +128,28 @@ target(E, W, _, W) :- E \== W.
 // a window or a debate is open, no pilot of the type is free or no request is waiting
 +!deliberate(_).
 
-// create claims from teh requests and forward to contenders
-+!add_claim(RT, E) : debate(RT, Order) & move_count(N) <-
+// create claims from the requests and forward to contenders
++!add_claim(RT, E, R) : debate(RT, Order) & debate_id(RT, DId) & move_count(N) <-
 	-+move_count(N + 1);
 	+move(RT, N + 1, E, claim);
-	for (.member(c(_, R), Order)) {
-		.send(R, argue, move(RT, N + 1, E, claim));
+	log_debate_move(DId, N + 1, R, E, claim, claim);
+	for (.member(c(_, CR), Order)) {
+		.send(CR, argue, move(RT, N + 1, E, claim));
 	}.
 
 /* Debate */
 
 // the turn goes to the first contender whose claim is not accepted, until the others concede
-+!next_turn(RT) : debate(RT, Order) & labels(RT, Labels) <-
++!next_turn(RT) : debate(RT, Order) & debate_id(RT, DId) & labels(RT, Labels) <-
 	if (.member(label(claim(W), in), Labels)) {
 		?winning_reason(Labels, Reason);
-		.print(RT, " debate: emergency ", W, " is winning, because of: ", Reason);
+		log_debate_status(DId, W, Reason);
+		.print(RT, " debate #", DId, ": emergency ", W, " is winning, because of: ", Reason);
 	} else {
 		// arg2p accepted no claim, the oldest emergency is winning and it can speak too
 		.min(Order, c(W, _));
-		.print(RT, " debate: no claim accepted, emergency ", W, " is the oldest");
+		log_debate_status(DId, W, tie_breaker_oldest);
+		.print(RT, " debate #", DId, ": no claim accepted, emergency ", W, " is the oldest");
 	}
 	if (.member(c(E, R), Order) & not .member(label(claim(E), in), Labels) & target(E, W, Labels, T)) {
 		!give_turn(RT, E, R, T);
@@ -169,9 +180,10 @@ target(E, W, _, W) :- E \== W.
 
 // the contender withdraws and waits for the next debate
 // without its claim its moves stop counting and the winner may change
-+!kqml_received(R, concede, concede(RT), _) : turn(RT, E, R) & debate(RT, Order) & move_count(N) <-
++!kqml_received(R, concede, concede(RT), _) : turn(RT, E, R) & debate(RT, Order) & debate_id(RT, DId) & move_count(N) <-
 	-+move_count(N + 1);
-	.print(RT, " debate, move ", N + 1, ": ", R, " (emergency ", E, ") concedes");
+	log_debate_move(DId, N + 1, R, E, concede, "withdrew claim");
+	.print(RT, " debate #", DId, ", move ", N + 1, ": ", R, " (emergency ", E, ") concedes");
 	-turn(RT, E, R);
 	.abolish(move(RT, _, E, claim));
 	.delete(c(E, R), Order, Others);
@@ -184,10 +196,11 @@ target(E, W, _, W) :- E \== W.
 	!next_turn(RT).
 
 // stores the move of who has the turn and relays it to the contenders with the same performative
-+!record_move(RT, Performative, Content) : turn(RT, E, R) & debate(RT, Order) & move_count(N) <-
++!record_move(RT, Performative, Content) : turn(RT, E, R) & debate(RT, Order) & debate_id(RT, DId) & move_count(N) <-
 	-+move_count(N + 1); // replaces move_count
 	+move(RT, N + 1, E, Content);
-	.print(RT, " debate, move ", N + 1, ": ", R, " (emergency ", E, ") ", Performative, " ", Content);
+	log_debate_move(DId, N + 1, R, E, Performative, Content);
+	.print(RT, " debate #", DId, ", move ", N + 1, ": ", R, " (emergency ", E, ") ", Performative, " ", Content);
 	for (.member(c(_, CR), Order)) {
 		.send(CR, Performative, move(RT, N + 1, E, Content));
 	}
@@ -195,6 +208,24 @@ target(E, W, _, W) :- E \== W.
 	!next_turn(RT).
 
 // the losers wait for the next debate, the winner gets the resource
++!conclude(RT, W) : debate(RT, Order) & debate_id(RT, DId) & labels(RT, Labels) <-
+	if (.member(label(claim(W), in), Labels)) {
+		?winning_reason(Labels, Reason);
+	} else {
+		Reason = tie_breaker_oldest;
+	}
+	.findall(L, .member(c(L, _), Order) & L \== W, Losers);
+	log_debate_end(DId, RT, W, Losers, Reason);
+	.print(RT, " debate #", DId, " won by emergency ", W);
+	for (.member(c(L, LR), Order) & L \== W) {
+		.send(LR, tell, denied(L, RT));
+	}
+	.abolish(move(RT, _, _, _));
+	-debate(RT, _);
+	-debate_id(RT, _);
+	!grant(W, RT);
+	!deliberate(RT).
+
 +!conclude(RT, W) : debate(RT, Order) <-
 	.print(RT, " debate won by emergency ", W);
 	for (.member(c(L, LR), Order) & L \== W) {
