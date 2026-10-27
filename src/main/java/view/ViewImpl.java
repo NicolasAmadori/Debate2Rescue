@@ -1,5 +1,6 @@
 package view;
 
+import arg.DebateEventListener;
 import jason.environment.grid.GridWorldView;
 import jason.environment.grid.Location;
 import java.awt.BorderLayout;
@@ -29,6 +30,7 @@ public class ViewImpl extends GridWorldView implements View {
 
   private static final Map<Resource, BufferedImage> RESOURCE_ICONS = loadResourceIcons();
   private static final Color STATION_COLOR = Color.DARK_GRAY;
+  private static final Color OBSTACLE_COLOR = Color.DARK_GRAY;
   private static final Color EMERGENCY_COLOR = Color.RED;
   private static final int GRID_SIZE_PX = 600;
   private static final int STRIPE_GAP_PX = 5;
@@ -62,21 +64,45 @@ public class ViewImpl extends GridWorldView implements View {
 
   @Override
   public void draw(Graphics g, int x, int y, int object) {
-    switch (object) {
-      case SimModel.STATION -> drawStation(g, x, y);
-      case SimModel.EMERGENCY -> {
-        Color color =
-            model()
-                .getEmergencyAt(new Location(x, y))
-                .map(e -> toColor(e.type().colorCode))
-                .orElse(EMERGENCY_COLOR);
-        g.setColor(color);
-        g.fillRect(x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);
-        g.setColor(Color.BLACK);
-        g.drawRect(x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 2, cellSizeH - 2);
-      }
-      default -> {}
+    if ((object & SimModel.OBSTACLE) != 0) {
+      drawObstacle(g, x, y);
     }
+    if ((object & SimModel.STATION) != 0) {
+      drawStation(g, x, y);
+    }
+    if ((object & SimModel.EMERGENCY) != 0) {
+      Color color =
+          model()
+              .getEmergencyAt(new Location(x, y))
+              .map(e -> toColor(e.type().colorCode))
+              .orElse(EMERGENCY_COLOR);
+      g.setColor(color);
+      g.fillRect(x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);
+      g.setColor(Color.BLACK);
+      g.drawRect(x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 2, cellSizeH - 2);
+    }
+  }
+
+  @Override
+  public void drawObstacle(Graphics g, int x, int y) {
+    drawObstacleTexture(g, x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);
+  }
+
+  /** Draws an obstacle as a cell with a dark gray 'X' texture, also used by the legend */
+  static void drawObstacleTexture(Graphics g, int left, int top, int width, int height) {
+    Graphics cell = g.create(left, top, width, height);
+    cell.setColor(OBSTACLE_COLOR);
+    cell.drawRect(0, 0, width - 1, height - 1);
+
+    // Draw thick 'X' pattern
+    cell.drawLine(0, 0, width - 1, height - 1);
+    cell.drawLine(1, 0, width - 1, height - 2);
+    cell.drawLine(0, 1, width - 2, height - 1);
+
+    cell.drawLine(0, height - 1, width - 1, 0);
+    cell.drawLine(1, height - 1, width - 1, 1);
+    cell.drawLine(0, height - 2, width - 2, 0);
+    cell.dispose();
   }
 
   @Override
@@ -118,7 +144,17 @@ public class ViewImpl extends GridWorldView implements View {
 
   @Override
   public void log(String message) {
-    SwingUtilities.invokeLater(() -> side.log(message));
+    log(LogCategory.NON_GUI, message);
+  }
+
+  @Override
+  public void log(LogCategory category, String message) {
+    SwingUtilities.invokeLater(() -> side.log(category, message));
+  }
+
+  @Override
+  public DebateEventListener getDebateListener() {
+    return side.getDebateListener();
   }
 
   @Override

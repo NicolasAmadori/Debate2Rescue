@@ -1,5 +1,6 @@
 package view;
 
+import arg.DebateEventListener;
 import java.util.function.IntConsumer;
 
 public interface View {
@@ -13,6 +14,25 @@ public interface View {
    * @param message the message to show
    */
   void log(String message);
+
+  /**
+   * Appends a categorized message to the event log
+   *
+   * @param category the category determining formatting hierarchy
+   * @param message the message to show
+   */
+  default void log(LogCategory category, String message) {
+    log(message);
+  }
+
+  /**
+   * Returns the debate event listener implemented by the view, if any.
+   *
+   * @return the debate listener or null
+   */
+  default DebateEventListener getDebateListener() {
+    return null;
+  }
 
   /**
    * Registers the action to run when the user moves the speed slider
