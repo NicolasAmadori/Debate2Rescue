@@ -1,0 +1,63 @@
+\documentclass{scrartcl}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage{comment}
+\usepackage[textsize=tiny]{todonotes}
+\newcommand{\TODO}[1]{\todo[color=orange!40, inline]{\textbf{TODO} #1}}
+\newcommand{\TODOside}[1]{\todo[color=orange!40]{\textbf{TODO} #1}}
+\newcommand{\NOTE}[1]{\todo[color=green!20, inline]{#1}}
+\newcommand{\NOTEside}[1]{\todo[color=green!20]{#1}}
+\newcommand{\REVIEWNOTE}[1]{\todo[color=violet!20, inline]{\textbf{Review note: } #1}}
+
+\usepackage{cleveref}
+
+\newcommand{\emailaddr}[1]{\href{mailto:#1}{\texttt{#1}}}
+
+\title{\LARGE
+    Debate2Rescue\\
+}
+\subtitle{Final Report for the Intelligent System Engineering Course 2025/2026}
+
+% Consider watching:
+% https://www.youtube.com/watch?v=ihxSUsJB_14
+% https://www.youtube.com/watch?v=XTFWaV55uDo
+
+\author{
+    Nicolas Amadori \\ \emailaddr{nicolas.amadori@studio.unibo.it}
+    \and
+    Riccardo Mazzi \\ \emailaddr{riccardo.mazzi@studio.unibo.it}
+    \and
+    Denise Nanni \\ \emailaddr{denise.nanni@studio.unibo.it}
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\TODO{abstract}
+\end{abstract}
+
+\section*{AI Disclaimer}
+
+During the preparation of this work, the authors used LLMs to help the development and to fix grammar errors in the report.
+
+After using these tools/services, the authors reviewed and edited the content as needed and take full responsibility for the content of the final report and artifact.
+
+\input{sections/introduction}
+\input{sections/literature_review}
+\input{sections/analysis}
+\input{sections/design}
+\input{sections/implementation}
+\input{sections/user_guide}
+\input{sections/comments}
+
+% \bibliographystyle{plainnat}
+% \bibliography{biblio}
+
+\end{document}

@@ -32,3 +32,9 @@ bin/
 *.stop*
 .vscode/
 !gradle-wrapper.jar
+
+report/**
+!report/*.tex
+!report/*.bib
+!report/sections/
+!report/sections/*.tex
