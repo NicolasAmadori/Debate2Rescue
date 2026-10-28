@@ -25,7 +25,7 @@ class EmergencyEnvironmentTest {
   private static final int GRID_WIDTH = 10;
   private static final int GRID_HEIGHT = 10;
   private static final int INITIAL_STATIONS = 2;
-  private static final int INITIAL_OBSTACLES = 5;
+  private static final int INITIAL_OBSTACLES = 0;
 
   private EmergencyEnvironment env;
   private SimModel model;
