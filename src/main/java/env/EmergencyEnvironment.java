@@ -70,7 +70,10 @@ public class EmergencyEnvironment extends Environment {
   public void init(String[] args) {
     super.init(args);
     config = getConfigValues(args);
-    maxEmergencies = Config.getMaxNumEmergencies(config.gridWidth(), config.gridHeight());
+    maxEmergencies =
+        Math.min(
+            Config.getMaxNumEmergencies(config.gridWidth(), config.gridHeight()),
+            SimModel.getMaxEmergencyLimit());
 
     model =
         new SimModel(

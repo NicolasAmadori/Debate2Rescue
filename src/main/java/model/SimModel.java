@@ -14,6 +14,7 @@ public class SimModel extends GridWorldModel {
   public static final int STATION = 8;
   public static final int EMERGENCY = 16;
   public static final int MAX_VICTIMS = 15;
+  public static final int MAX_EMERGENCIES_PER_TYPE = 4;
 
   private final List<Location> stations;
   private final List<Location> obstacles;
@@ -62,10 +63,28 @@ public class SimModel extends GridWorldModel {
 
   /***
    * Getter method
+   * @return the maximum number of emergencies that can be present in the simulation.
+   */
+  public static int getMaxEmergencyLimit() {
+    return MAX_EMERGENCIES_PER_TYPE * EmergencyType.values().length;
+  }
+
+  /***
+   * Getter method
    * @return the list of emergencies on the grid.
    */
   public synchronized List<Emergency> getEmergencies() {
     return List.copyOf(emergencies.values());
+  }
+
+  /***
+   * Counts the number of emergencies of a given type currently present on the grid.
+   *
+   * @param type the emergency type
+   * @return the number of emergencies of the given type
+   */
+  public synchronized int countEmergencies(EmergencyType type) {
+    return (int) emergencies.values().stream().filter(e -> e.type() == type).count();
   }
 
   /***
@@ -80,9 +99,18 @@ public class SimModel extends GridWorldModel {
   /***
    * Creates an emergency with random properties in a cell without stations and emergencies.
    *
-   * @return the new emergency, or empty if there are no free cells left.
+   * @return the new emergency, or empty if no emergency can be spawned or no free cells left.
    */
   public synchronized Optional<Emergency> spawnEmergency() {
+    List<EmergencyType> availableTypes = new ArrayList<>();
+    for (EmergencyType type : emergencyTypes) {
+      if (countEmergencies(type) < MAX_EMERGENCIES_PER_TYPE) {
+        availableTypes.add(type);
+      }
+    }
+    if (availableTypes.isEmpty()) {
+      return Optional.empty();
+    }
     Location pos = getFreePos(OBSTACLE | STATION | EMERGENCY);
     if (pos == null) {
       return Optional.empty();
@@ -91,7 +119,7 @@ public class SimModel extends GridWorldModel {
         new Emergency(
             nextEmergencyId++,
             pos,
-            emergencyTypes[random.nextInt(emergencyTypes.length)],
+            availableTypes.get(random.nextInt(availableTypes.size())),
             severities[random.nextInt(severities.length)],
             random.nextInt(MAX_VICTIMS) + 1,
             random.nextDouble() < Config.TRAPPED_PROB,
