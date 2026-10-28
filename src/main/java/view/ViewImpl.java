@@ -229,7 +229,6 @@ public class ViewImpl extends GridWorldView implements View {
     return switch (colorCode) {
       case "red" -> Color.RED;
       case "blue" -> Color.BLUE;
-      case "pink" -> Color.PINK;
       case "brown" -> new Color(139, 69, 19);
       case "black" -> Color.BLACK;
       case "white" -> Color.WHITE;

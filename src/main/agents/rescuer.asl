@@ -3,7 +3,6 @@
 /* Emergency type to required resource mapping */
 resource_for(fire, fire_truck).
 resource_for(medical, ambulance).
-resource_for(hostage, police_car).
 resource_for(aggression, police_car).
 resource_for(hazmat, hazmat_team).
 resource_for(bomb, bomb_squad).
