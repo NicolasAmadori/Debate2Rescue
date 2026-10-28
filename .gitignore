@@ -39,3 +39,5 @@ report/**
 !report/*.bib
 !report/sections/
 !report/sections/*.tex
+!report/figures/
+!report/figures/*
