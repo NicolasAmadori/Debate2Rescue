@@ -39,6 +39,8 @@ public class EmergencyEnvironment extends Environment {
   private static final String ORCHESTRATOR = "orchestrator";
   private static final String RESCUER = "rescuer";
   private static final String PILOT = "pilot";
+  private static final long MAS_INIT_TIMEOUT_MS = 10_000;
+  private static final long MAS_POLL_INTERVAL_MS = 50;
 
   // Percepts
   private static final String PERCEPT_RESCUER = "rescuer";
@@ -69,7 +71,7 @@ public class EmergencyEnvironment extends Environment {
   @Override
   public void init(String[] args) {
     super.init(args);
-    config = getConfigValues(args);
+    config = getConfigValues();
     maxEmergencies =
         Math.min(
             Config.getMaxNumEmergencies(config.gridWidth(), config.gridHeight()),
@@ -92,7 +94,9 @@ public class EmergencyEnvironment extends Environment {
     }
 
     // Spawning dynamic rescuers asynchronously
-    new Thread(this::spawnInitialAgents, "agent-spawner").start();
+    Thread spawnerThread = new Thread(this::spawnInitialAgents, "agent-spawner");
+    spawnerThread.setDaemon(true);
+    spawnerThread.start();
 
     // Starting the emergency generator thread
     generatorThread = new Thread(this::generateEmergencies, "emergency-generator");
@@ -111,37 +115,46 @@ public class EmergencyEnvironment extends Environment {
     super.stop();
   }
 
-  private ConfigValues getConfigValues(String[] args) {
-    ConfigValues configValues;
-    if (args.length == 6) {
-      configValues =
-          new ConfigValues(
-              Integer.parseInt(args[0]),
-              Integer.parseInt(args[1]),
-              Integer.parseInt(args[2]),
-              Integer.parseInt(args[3]),
-              Integer.parseInt(args[4]),
-              Integer.parseInt(args[5]));
-    } else {
-      Optional<ConfigValues> chosen = SimConfigDialog.ask();
-      if (chosen.isEmpty()) {
-        System.exit(0);
-      }
-      configValues = chosen.get();
+  private ConfigValues getConfigValues() {
+    Optional<ConfigValues> chosen = SimConfigDialog.ask();
+    if (chosen.isEmpty()) {
+      System.exit(0);
     }
-    return configValues;
+    return chosen.get();
   }
 
   /** Spawns the initial configured batch of dynamic rescuers and pilots. */
   private void spawnInitialAgents() {
+    long startTime = System.currentTimeMillis();
     try {
-      // Wait for the MAS environment to complete initialization
-      Thread.sleep(200);
+      RuntimeServices services = RuntimeServicesFactory.get();
+      // Wait until the MAS environment completes initialization and is officially running
+      while (!isMasRunning(services)) {
+        if (System.currentTimeMillis() - startTime > MAS_INIT_TIMEOUT_MS) {
+          LOGGER.severe("Timed out waiting for MAS environment to become ready.");
+          return;
+        }
+        Thread.sleep(MAS_POLL_INTERVAL_MS);
+        services = RuntimeServicesFactory.get();
+      }
       spawnAgents(PILOT, config.pilotsCount());
       spawnAgents(RESCUER, config.rescuersCount());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warning("Agent spawning thread was interrupted.");
+    } catch (Exception e) {
+      LOGGER.warning("Failed during agent initialization: " + e.getMessage());
+    }
+  }
+
+  private boolean isMasRunning(RuntimeServices services) {
+    if (services == null) {
+      return false;
+    }
+    try {
+      return services.isRunning();
+    } catch (Exception e) {
+      return false;
     }
   }
 
@@ -156,11 +169,23 @@ public class EmergencyEnvironment extends Environment {
     role = role.toLowerCase();
     List<String> spawned = new ArrayList<>();
     RuntimeServices services = RuntimeServicesFactory.get();
+    if (!isMasRunning(services)) {
+      return spawned;
+    }
+
     String aslPath = "src/main/agents/" + role + ".asl";
     for (int i = 0; i < count; i++) {
+      if (!isMasRunning(services)) {
+        LOGGER.info("MAS runtime stopped; halting dynamic spawning for " + role);
+        break;
+      }
       String agName = String.format("%s_%d", role, i + 1);
       try {
         String createdAgName = services.createAgent(agName, aslPath, null, null, null, null, null);
+        if (createdAgName == null || "system.not.running".equals(createdAgName)) {
+          LOGGER.warning("MAS is not running; skipping start for agent " + agName);
+          break;
+        }
         services.startAgent(createdAgName);
         spawned.add(createdAgName);
       } catch (Exception e) {
