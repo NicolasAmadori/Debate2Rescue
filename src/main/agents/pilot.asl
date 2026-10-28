@@ -10,7 +10,7 @@
 
 +!move_to_emergency(Id, R, X, Y)[source(orchestrator)] <-
 	!go_to(X, Y);
-	?emergency_info(Id, _, Severity, Victims);
+	?emergency_info(Id, _, Severity, Victims, Trapped, Escalating, Size, CollateralRisk);
 	wait_steps(2*Severity + Victims);
 	resolve_emergency(Id);
 	.send(R, tell, emergency_resolved(Id));

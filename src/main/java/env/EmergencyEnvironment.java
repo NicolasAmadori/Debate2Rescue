@@ -1,8 +1,11 @@
 package env;
 
+import arg.DebateEventListener;
+import arg.DebateLogger;
 import config.Config;
 import config.ConfigValues;
 import jason.asSyntax.ASSyntax;
+import jason.asSyntax.ListTerm;
 import jason.asSyntax.Literal;
 import jason.asSyntax.NumberTerm;
 import jason.asSyntax.StringTerm;
@@ -24,6 +27,7 @@ import model.Pilot;
 import model.Rescuer;
 import model.Responder;
 import model.SimModel;
+import view.LogCategory;
 import view.SimConfigDialog;
 import view.View;
 import view.ViewImpl;
@@ -46,7 +50,6 @@ public class EmergencyEnvironment extends Environment {
 
   // Emergency generation
   private static final int ACTION_THREADS = 20;
-  private static final int SPAWN_CHANCE_PERCENTAGE = 30;
 
   private SimModel model;
   private View view;
@@ -55,6 +58,8 @@ public class EmergencyEnvironment extends Environment {
   private final Random random = new Random();
   private Thread generatorThread;
   private int simulationSpeed = 300; // Managed from the view
+  private int spawnChance = 30; // Managed from the view, percentage per step
+  private final DebateLogger debateLogger = new DebateLogger();
 
   public EmergencyEnvironment() {
     // Increased the number of action threads for better concurrency handling
@@ -65,11 +70,26 @@ public class EmergencyEnvironment extends Environment {
   public void init(String[] args) {
     super.init(args);
     config = getConfigValues(args);
-    maxEmergencies = Config.getMaxNumEmergencies(config.gridWidth(), config.gridHeight());
+    maxEmergencies =
+        Math.min(
+            Config.getMaxNumEmergencies(config.gridWidth(), config.gridHeight()),
+            SimModel.getMaxEmergencyLimit());
 
-    model = new SimModel(config.gridWidth(), config.gridHeight(), config.stationsCount());
+    model =
+        new SimModel(
+            config.gridWidth(),
+            config.gridHeight(),
+            config.stationsCount(),
+            config.obstaclesCount());
     view = new ViewImpl(model);
     view.setOnSpeedChange(speed -> simulationSpeed = speed);
+    view.setOnSpawnChanceChange(chance -> spawnChance = chance);
+    view.setOnMaxEmergenciesChange(max -> maxEmergencies = max);
+
+    DebateEventListener debateListener = view.getDebateListener();
+    if (debateListener != null) {
+      debateLogger.addListener(debateListener);
+    }
 
     // Spawning dynamic rescuers asynchronously
     new Thread(this::spawnInitialAgents, "agent-spawner").start();
@@ -79,7 +99,8 @@ public class EmergencyEnvironment extends Environment {
     generatorThread.setDaemon(true);
     generatorThread.start();
 
-    log("EmergencyEnvironment initialized.");
+    log(LogCategory.NON_GUI, "EmergencyEnvironment initialized.");
+    log(LogCategory.NON_GUI, "Debate logs directory: " + debateLogger.getLogDirectory());
   }
 
   @Override
@@ -92,14 +113,15 @@ public class EmergencyEnvironment extends Environment {
 
   private ConfigValues getConfigValues(String[] args) {
     ConfigValues configValues;
-    if (args.length == 5) {
+    if (args.length == 6) {
       configValues =
           new ConfigValues(
               Integer.parseInt(args[0]),
               Integer.parseInt(args[1]),
               Integer.parseInt(args[2]),
               Integer.parseInt(args[3]),
-              Integer.parseInt(args[4]));
+              Integer.parseInt(args[4]),
+              Integer.parseInt(args[5]));
     } else {
       Optional<ConfigValues> chosen = SimConfigDialog.ask();
       if (chosen.isEmpty()) {
@@ -155,16 +177,14 @@ public class EmergencyEnvironment extends Environment {
     try {
       while (!Thread.currentThread().isInterrupted()) {
         Thread.sleep(simulationSpeed);
-        if (random.nextInt(100) < SPAWN_CHANCE_PERCENTAGE
-            && model.getEmergencies().size() < maxEmergencies) {
+        if (random.nextInt(100) < spawnChance && model.getEmergencies().size() < maxEmergencies) {
           model
               .spawnEmergency()
               .ifPresent(
                   e -> {
-                    log("Generated: " + e);
+                    log(LogCategory.GUI_VISIBLE, "Generated: " + e);
                     informAgsEnvironmentChanged();
                   });
-          ;
         }
       }
     } catch (InterruptedException e) {
@@ -185,6 +205,10 @@ public class EmergencyEnvironment extends Environment {
         case "wait_steps" -> waitSteps(intArg(action, 0));
         case "resolve_emergency" -> resolveEmergency(agName, intArg(action, 0));
         case "log" -> logAgentMessage(agName, action.getTerms());
+        case "log_debate_start" -> logDebateStart(action);
+        case "log_debate_move" -> logDebateMove(action);
+        case "log_debate_status" -> logDebateStatus(action);
+        case "log_debate_end" -> logDebateEnd(action);
         default -> {
           LOGGER.warning("Unknown or unhandled action: " + action);
           yield false;
@@ -245,9 +269,13 @@ public class EmergencyEnvironment extends Environment {
                               literal(
                                   PERCEPT_EMERGENCY_INFO,
                                   e.id(),
-                                  e.type().colorCode,
+                                  e.type().name().toLowerCase(),
                                   e.severity().esi,
-                                  e.victims())));
+                                  e.victims(),
+                                  e.trapped(),
+                                  e.escalating(),
+                                  e.size().value,
+                                  e.collateralRisk())));
             });
     return percepts;
   }
@@ -255,7 +283,9 @@ public class EmergencyEnvironment extends Environment {
   // Internal actions
 
   private boolean join(Responder r) {
-    log(r.name() + " joined at station (" + r.station().x + "," + r.station().y + ")");
+    log(
+        LogCategory.GUI_VISIBLE,
+        r.name() + " joined at station (" + r.station().x + "," + r.station().y + ")");
     return true;
   }
 
@@ -302,7 +332,11 @@ public class EmergencyEnvironment extends Environment {
    */
   private boolean assign(String rescuerId, int emergencyId) {
     Optional<Emergency> emergency = model.setEmergencyStatus(emergencyId, EmergencyStatus.ASSIGNED);
-    emergency.ifPresent(e -> log("Emergency " + emergencyId + " assigned to rescuer " + rescuerId));
+    emergency.ifPresent(
+        e ->
+            log(
+                LogCategory.NON_GUI,
+                "Emergency " + emergencyId + " assigned to rescuer " + rescuerId));
     return emergency.isPresent();
   }
 
@@ -317,7 +351,8 @@ public class EmergencyEnvironment extends Environment {
   private boolean startRescue(String agName, int emergencyId) {
     Optional<Emergency> emergency =
         model.setEmergencyStatus(emergencyId, EmergencyStatus.IN_PROGRESS);
-    emergency.ifPresent(e -> log(agName + " reached emergency " + emergencyId + ": " + e));
+    emergency.ifPresent(
+        e -> log(LogCategory.GUI_VISIBLE, agName + " reached emergency " + emergencyId + ": " + e));
     return emergency.isPresent();
   }
 
@@ -345,7 +380,7 @@ public class EmergencyEnvironment extends Environment {
    * @return true after logging the message
    */
   private boolean logAgentMessage(String agName, List<Term> terms) {
-    log(agName + ": " + concatTerms(terms));
+    log(LogCategory.NON_GUI, agName + ": " + concatTerms(terms));
     return true;
   }
 
@@ -361,17 +396,101 @@ public class EmergencyEnvironment extends Environment {
     Optional<Emergency> emergency = model.resolveEmergency(id);
     emergency.ifPresent(
         e -> {
-          log("Emergency " + id + " resolved by: " + agName);
+          log(LogCategory.NON_GUI, "Emergency " + id + " resolved by: " + agName);
           informAgsEnvironmentChanged();
         });
     return emergency.isPresent();
   }
 
+  public DebateLogger getDebateLogger() {
+    return debateLogger;
+  }
+
+  private boolean logDebateStart(Structure action) throws Exception {
+    int debateId = intArg(action, 0);
+    String resourceType = action.getTerm(1).toString();
+    List<String> contenders = listArg(action, 2);
+
+    List<String> emergencyInfos = new ArrayList<>();
+    for (String contender : contenders) {
+      Integer emId = DebateLogger.extractEmergencyId(contender);
+      String rescuer = DebateLogger.extractRescuerName(contender);
+      if (emId != null) {
+        Emergency e = model.getEmergency(emId).orElse(null);
+        if (e != null) {
+          emergencyInfos.add(
+              String.format(
+                  "%s (Emergency #%d): %s | Severity: %s (ESI %d) | Victims: %d | Trapped: %s | Escalating: %s",
+                  rescuer,
+                  e.id(),
+                  e.type(),
+                  e.severity(),
+                  e.severity().esi,
+                  e.victims(),
+                  e.trapped() ? "yes" : "no",
+                  e.escalating() ? "yes" : "no"));
+        } else {
+          emergencyInfos.add(rescuer + " (Emergency #" + emId + ")");
+        }
+      } else {
+        emergencyInfos.add(contender);
+      }
+    }
+
+    debateLogger.logStart(debateId, resourceType, contenders, emergencyInfos);
+    return true;
+  }
+
+  private boolean logDebateMove(Structure action) throws Exception {
+    int debateId = intArg(action, 0);
+    int moveId = intArg(action, 1);
+    String rescuer = action.getTerm(2).toString();
+    int emergency = intArg(action, 3);
+    String type = action.getTerm(4).toString();
+    String content = action.getTerm(5).toString();
+    debateLogger.logMove(debateId, moveId, rescuer, emergency, type, content);
+    return true;
+  }
+
+  private boolean logDebateStatus(Structure action) throws Exception {
+    int debateId = intArg(action, 0);
+    int winner = intArg(action, 1);
+    String reason = action.getTerm(2).toString();
+    debateLogger.logStatus(debateId, winner, reason);
+    return true;
+  }
+
+  private boolean logDebateEnd(Structure action) throws Exception {
+    int debateId = intArg(action, 0);
+    String resourceType = action.getTerm(1).toString();
+    int winner = intArg(action, 2);
+    List<String> losers = listArg(action, 3);
+    String reason = action.getTerm(4).toString();
+    debateLogger.logEnd(debateId, resourceType, winner, losers, reason);
+    return true;
+  }
+
+  private static List<String> listArg(Structure action, int index) {
+    Term term = action.getTerm(index);
+    if (term instanceof ListTerm listTerm) {
+      List<String> items = new ArrayList<>();
+      for (Term elem : listTerm) {
+        items.add(elem.toString());
+      }
+      return items;
+    }
+    return List.of(term.toString());
+  }
+
   // Utility methods
 
   private void log(String message) {
+    log(LogCategory.NON_GUI, message);
+  }
+
+  private void log(LogCategory category, String message) {
     LOGGER.info(message);
-    view.log(message);
+    view.log(category, message);
   }
 
   private static int intArg(Structure action, int index) throws Exception {

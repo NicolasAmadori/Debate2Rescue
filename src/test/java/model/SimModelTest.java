@@ -10,11 +10,12 @@ import org.junit.jupiter.api.Test;
 
 class SimModelTest {
 
-  private SimModel model = new SimModel(20, 20, 2);
+  private SimModel model = new SimModel(20, 20, 2, 5);
 
   @Test
   void testInitialSetting() {
     assertEquals(2, model.getStations().size());
+    assertEquals(5, model.getObstacles().size());
   }
 
   @Test
@@ -71,15 +72,14 @@ class SimModelTest {
     } while (distRescuer < 1 || distPilot < 2);
     model.moveTowards("rescuer1", target);
     model.moveTowards("pilot1", target);
-    assertEquals(
-        distRescuer - 1,
-        Config.getManhattanDistance(
-            model.getResponder("rescuer1").orElseThrow().position(), target),
-        "Rescuer should move one cell");
-    assertEquals(
-        distPilot - 2,
-        Config.getManhattanDistance(model.getResponder("pilot1").orElseThrow().position(), target),
-        "Pilot should move two cells");
+    Location newRescuerPos = model.getResponder("rescuer1").orElseThrow().position();
+    Location newPilotPos = model.getResponder("pilot1").orElseThrow().position();
+    assertTrue(
+        Config.getManhattanDistance(newRescuerPos, target) < distRescuer,
+        "Rescuer should move closer to target");
+    assertTrue(
+        Config.getManhattanDistance(newPilotPos, target) < distPilot,
+        "Pilot should move closer to target");
   }
 
   @Test
@@ -103,5 +103,42 @@ class SimModelTest {
     assertFalse(
         model.hasObject(SimModel.AGENT, station),
         "Station cell should not have agent bit since all agents are gone");
+  }
+
+  @Test
+  void testEmergencyPerTypeLimit() {
+    SimModel freshModel = new SimModel(20, 20, 1, 0);
+    assertEquals(4, SimModel.MAX_EMERGENCIES_PER_TYPE);
+    int expectedTotalLimit = SimModel.MAX_EMERGENCIES_PER_TYPE * EmergencyType.values().length;
+    assertEquals(expectedTotalLimit, SimModel.getMaxEmergencyLimit());
+
+    int spawnedCount = 0;
+    while (freshModel.spawnEmergency().isPresent()) {
+      spawnedCount++;
+      for (EmergencyType type : EmergencyType.values()) {
+        assertTrue(
+            freshModel.countEmergencies(type) <= SimModel.MAX_EMERGENCIES_PER_TYPE,
+            "Count for type " + type + " should not exceed " + SimModel.MAX_EMERGENCIES_PER_TYPE);
+      }
+    }
+
+    assertEquals(expectedTotalLimit, spawnedCount, "Total spawned should reach the fixed limit");
+    assertEquals(expectedTotalLimit, freshModel.getEmergencies().size());
+
+    // Resolving one emergency of a specific type should allow spawning another of that exact type
+    Emergency removed = freshModel.getEmergencies().get(0);
+    EmergencyType freedType = removed.type();
+    assertTrue(freshModel.resolveEmergency(removed.id()).isPresent());
+    assertEquals(SimModel.MAX_EMERGENCIES_PER_TYPE - 1, freshModel.countEmergencies(freedType));
+
+    // Next spawn must be of the freed type
+    Emergency newEmergency = freshModel.spawnEmergency().orElseThrow();
+    assertEquals(
+        freedType,
+        newEmergency.type(),
+        "Spawned emergency must be of the only type with available capacity");
+    assertEquals(SimModel.MAX_EMERGENCIES_PER_TYPE, freshModel.countEmergencies(freedType));
+
+    assertTrue(freshModel.spawnEmergency().isEmpty(), "No more emergencies should spawn");
   }
 }
