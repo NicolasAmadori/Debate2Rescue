@@ -24,6 +24,8 @@ class Legend extends JPanel {
       add(entry(agent.name(), new Swatch(Shape.CIRCLE, agent.getColor())));
     }
     add(entry("station", new Swatch(Shape.STRIPES, null)));
+    // obstacles are drawn as a dark gray cell with an 'X' pattern texture
+    add(entry("obstacle", new Swatch(Shape.CROSS, null)));
     for (EmergencyType type : EmergencyType.values()) {
       add(entry(type.name(), new Swatch(Shape.SQUARE, ViewImpl.toColor(type.colorCode))));
     }
@@ -42,7 +44,8 @@ class Legend extends JPanel {
   private enum Shape {
     CIRCLE,
     SQUARE,
-    STRIPES
+    STRIPES,
+    CROSS
   }
 
   /** A small icon drawn like the matching element of the grid */
@@ -63,6 +66,7 @@ class Legend extends JPanel {
           g.drawRect(x, y, SWATCH_PX - 1, SWATCH_PX - 1);
         }
         case STRIPES -> ViewImpl.drawStripes(g, x, y, SWATCH_PX, SWATCH_PX);
+        case CROSS -> ViewImpl.drawObstacleTexture(g, x, y, SWATCH_PX, SWATCH_PX);
       }
     }
 

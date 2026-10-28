@@ -3,7 +3,6 @@ package model;
 public enum EmergencyType {
   FIRE("red"),
   MEDICAL("blue"),
-  HOSTAGE("pink"),
   HAZMAT("brown"),
   BOMB("black"),
   AGGRESSION("white"),

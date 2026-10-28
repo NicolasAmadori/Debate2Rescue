@@ -22,6 +22,10 @@ public final class SimConfigDialog {
   private static final int STATIONS_MIN = 1;
   private static final int STATIONS_MAX = Config.getMaxNumStations(MAX_SIZE, MAX_SIZE);
   private static final int DEFAULT_STATIONS = Config.getNumStations(DEFAULT_SIZE, DEFAULT_SIZE);
+  // Obstacles values
+  private static final int OBSTACLES_MIN = 0;
+  private static final int OBSTACLES_MAX = Config.getMaxNumObstacles(MAX_SIZE, MAX_SIZE);
+  private static final int DEFAULT_OBSTACLES = Config.getNumObstacles(DEFAULT_SIZE, DEFAULT_SIZE);
   // Rescuers values
   private static final int RESCUERS_MIN = 1;
   private static final int RESCUERS_MAX = STATIONS_MAX * Config.MAX_RESCUER_FREQ;
@@ -43,6 +47,8 @@ public final class SimConfigDialog {
     JSpinner rows = new JSpinner(new SpinnerNumberModel(DEFAULT_SIZE, MIN_SIZE, MAX_SIZE, 1));
     JSpinner stations =
         new JSpinner(new SpinnerNumberModel(DEFAULT_STATIONS, STATIONS_MIN, STATIONS_MAX, 1));
+    JSpinner obstacles =
+        new JSpinner(new SpinnerNumberModel(DEFAULT_OBSTACLES, OBSTACLES_MIN, OBSTACLES_MAX, 1));
     JSpinner rescuers =
         new JSpinner(new SpinnerNumberModel(DEFAULT_RESCUERS, RESCUERS_MIN, RESCUERS_MAX, 1));
     JSpinner pilots =
@@ -55,6 +61,8 @@ public final class SimConfigDialog {
     panel.add(rows);
     panel.add(new JLabel("Stations count"));
     panel.add(stations);
+    panel.add(new JLabel("Obstacles count"));
+    panel.add(obstacles);
     panel.add(new JLabel("Rescuers count"));
     panel.add(rescuers);
     panel.add(new JLabel("Pilots count"));
@@ -74,6 +82,8 @@ public final class SimConfigDialog {
     int rowsValue = (int) rows.getValue();
     int stationsValue =
         Math.min((int) stations.getValue(), Config.getMaxNumStations(columnsValue, rowsValue));
+    int obstaclesValue =
+        Math.min((int) obstacles.getValue(), Config.getMaxNumObstacles(columnsValue, rowsValue));
     int rescuersValue =
         Math.min((int) rescuers.getValue(), stationsValue * Config.MAX_RESCUER_FREQ);
     rescuersValue = Math.max(rescuersValue, stationsValue); // At least one rescuer per station
@@ -83,7 +93,8 @@ public final class SimConfigDialog {
         Math.max(pilotsValue, Resource.values().length); // At least one pilot per resource
 
     ConfigValues config =
-        new ConfigValues(columnsValue, rowsValue, stationsValue, rescuersValue, pilotsValue);
+        new ConfigValues(
+            columnsValue, rowsValue, stationsValue, obstaclesValue, rescuersValue, pilotsValue);
     return Optional.of(config);
   }
 }

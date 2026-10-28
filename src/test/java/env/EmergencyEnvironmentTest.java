@@ -25,6 +25,7 @@ class EmergencyEnvironmentTest {
   private static final int GRID_WIDTH = 10;
   private static final int GRID_HEIGHT = 10;
   private static final int INITIAL_STATIONS = 2;
+  private static final int INITIAL_OBSTACLES = 0;
 
   private EmergencyEnvironment env;
   private SimModel model;
@@ -36,7 +37,7 @@ class EmergencyEnvironmentTest {
           @Override
           public void init(String[] args) {}
         };
-    model = new SimModel(GRID_WIDTH, GRID_HEIGHT, INITIAL_STATIONS);
+    model = new SimModel(GRID_WIDTH, GRID_HEIGHT, INITIAL_STATIONS, INITIAL_OBSTACLES);
 
     View dummyView =
         new View() {
@@ -47,6 +48,16 @@ class EmergencyEnvironmentTest {
 
           @Override
           public void setOnSpeedChange(IntConsumer listener) {
+            // Empty implementation for testing purposes
+          }
+
+          @Override
+          public void setOnSpawnChanceChange(IntConsumer listener) {
+            // Empty implementation for testing purposes
+          }
+
+          @Override
+          public void setOnMaxEmergenciesChange(IntConsumer listener) {
             // Empty implementation for testing purposes
           }
 
@@ -185,6 +196,23 @@ class EmergencyEnvironmentTest {
     assertTrue(
         rescuerPercepts.stream().anyMatch(p -> p.getFunctor().equals("emergency_info")),
         "Rescuer at emergency location should perceive 'emergency_info'");
+
+    // The percept must expose the emergency type so the rescuer can pick the resource
+    Literal expectedInfo =
+        Literal.parseLiteral(
+            String.format(
+                "emergency_info(%d,%s,%d,%d,%b,%b,%d,%b)",
+                id,
+                emergency.type().name().toLowerCase(),
+                emergency.severity().esi,
+                emergency.victims(),
+                emergency.trapped(),
+                emergency.escalating(),
+                emergency.size().value,
+                emergency.collateralRisk()));
+    assertTrue(
+        rescuerPercepts.stream().anyMatch(p -> p.equals(expectedInfo)),
+        "Rescuer should perceive the emergency type name");
 
     // Test start_rescue
     Structure startRescueValid = (Structure) Literal.parseLiteral("start_rescue(" + id + ")");

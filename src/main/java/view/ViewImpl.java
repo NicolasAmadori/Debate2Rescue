@@ -1,5 +1,6 @@
 package view;
 
+import arg.DebateEventListener;
 import jason.environment.grid.GridWorldView;
 import jason.environment.grid.Location;
 import java.awt.BorderLayout;
@@ -8,18 +9,28 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Toolkit;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.IntConsumer;
+import javax.imageio.ImageIO;
 import javax.swing.SwingUtilities;
 import model.Pilot;
 import model.Rescuer;
+import model.Resource;
 import model.Responder;
 import model.SimModel;
 
 public class ViewImpl extends GridWorldView implements View {
 
+  private static final Map<Resource, BufferedImage> RESOURCE_ICONS = loadResourceIcons();
   private static final Color STATION_COLOR = Color.DARK_GRAY;
+  private static final Color OBSTACLE_COLOR = Color.DARK_GRAY;
   private static final Color EMERGENCY_COLOR = Color.RED;
   private static final int GRID_SIZE_PX = 600;
   private static final int STRIPE_GAP_PX = 5;
@@ -39,7 +50,7 @@ public class ViewImpl extends GridWorldView implements View {
 
     getCanvas().setBackground(Color.WHITE);
     getCanvas().setPreferredSize(new Dimension(width, width));
-    this.side = new SidePanel();
+    this.side = new SidePanel(model.getWidth(), model.getHeight());
     getContentPane().add(side, BorderLayout.EAST);
     pack();
   }
@@ -53,21 +64,45 @@ public class ViewImpl extends GridWorldView implements View {
 
   @Override
   public void draw(Graphics g, int x, int y, int object) {
-    switch (object) {
-      case SimModel.STATION -> drawStation(g, x, y);
-      case SimModel.EMERGENCY -> {
-        Color color =
-            model()
-                .getEmergencyAt(new Location(x, y))
-                .map(e -> toColor(e.type().colorCode))
-                .orElse(EMERGENCY_COLOR);
-        g.setColor(color);
-        g.fillRect(x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);
-        g.setColor(Color.BLACK);
-        g.drawRect(x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 2, cellSizeH - 2);
-      }
-      default -> {}
+    if ((object & SimModel.OBSTACLE) != 0) {
+      drawObstacle(g, x, y);
     }
+    if ((object & SimModel.STATION) != 0) {
+      drawStation(g, x, y);
+    }
+    if ((object & SimModel.EMERGENCY) != 0) {
+      Color color =
+          model()
+              .getEmergencyAt(new Location(x, y))
+              .map(e -> toColor(e.type().colorCode))
+              .orElse(EMERGENCY_COLOR);
+      g.setColor(color);
+      g.fillRect(x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);
+      g.setColor(Color.BLACK);
+      g.drawRect(x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 2, cellSizeH - 2);
+    }
+  }
+
+  @Override
+  public void drawObstacle(Graphics g, int x, int y) {
+    drawObstacleTexture(g, x * cellSizeW + 1, y * cellSizeH + 1, cellSizeW - 1, cellSizeH - 1);
+  }
+
+  /** Draws an obstacle as a cell with a dark gray 'X' texture, also used by the legend */
+  static void drawObstacleTexture(Graphics g, int left, int top, int width, int height) {
+    Graphics cell = g.create(left, top, width, height);
+    cell.setColor(OBSTACLE_COLOR);
+    cell.drawRect(0, 0, width - 1, height - 1);
+
+    // Draw thick 'X' pattern
+    cell.drawLine(0, 0, width - 1, height - 1);
+    cell.drawLine(1, 0, width - 1, height - 2);
+    cell.drawLine(0, 1, width - 2, height - 1);
+
+    cell.drawLine(0, height - 1, width - 1, 0);
+    cell.drawLine(1, height - 1, width - 1, 1);
+    cell.drawLine(0, height - 2, width - 2, 0);
+    cell.dispose();
   }
 
   @Override
@@ -85,7 +120,7 @@ public class ViewImpl extends GridWorldView implements View {
     int slotsPerSide = (int) Math.ceil(Math.sqrt(here.size()));
     int slotW = cellSizeW / Math.max(1, slotsPerSide);
     int slotH = height / Math.max(1, slotsPerSide);
-    int gap = Math.max(1, Math.min(slotW, slotH) / 6);
+    int gap = Math.max(1, Math.min(slotW, slotH) / 10);
     for (int i = 0; i < here.size(); i++) {
       int slotX = x * cellSizeW + (i % slotsPerSide) * slotW;
       int slotY = top + (i / slotsPerSide) * slotH;
@@ -97,17 +132,44 @@ public class ViewImpl extends GridWorldView implements View {
           slotY + (slotH - diameter) / 2 + 1,
           diameter,
           diameter);
+      if (here.get(i) instanceof Pilot pilot) {
+        BufferedImage icon = RESOURCE_ICONS.get(pilot.resource());
+        int iconSize = diameter;
+        int iconX = slotX + (slotW - iconSize) / 2 + 1;
+        int iconY = slotY + (slotH - iconSize) / 2 + 1;
+        g.drawImage(icon, iconX, iconY, iconSize, iconSize, null);
+      }
     }
   }
 
   @Override
   public void log(String message) {
-    SwingUtilities.invokeLater(() -> side.log(message));
+    log(LogCategory.NON_GUI, message);
+  }
+
+  @Override
+  public void log(LogCategory category, String message) {
+    SwingUtilities.invokeLater(() -> side.log(category, message));
+  }
+
+  @Override
+  public DebateEventListener getDebateListener() {
+    return side.getDebateListener();
   }
 
   @Override
   public void setOnSpeedChange(IntConsumer onSpeedChange) {
     SwingUtilities.invokeLater(() -> side.setOnSpeedChange(onSpeedChange));
+  }
+
+  @Override
+  public void setOnSpawnChanceChange(IntConsumer onSpawnChanceChange) {
+    SwingUtilities.invokeLater(() -> side.setOnSpawnChanceChange(onSpawnChanceChange));
+  }
+
+  @Override
+  public void setOnMaxEmergenciesChange(IntConsumer onMaxEmergenciesChange) {
+    SwingUtilities.invokeLater(() -> side.setOnMaxEmergenciesChange(onMaxEmergenciesChange));
   }
 
   /** Draws a station as a striped cell */
@@ -139,6 +201,26 @@ public class ViewImpl extends GridWorldView implements View {
     };
   }
 
+  private static Map<Resource, BufferedImage> loadResourceIcons() {
+    Map<Resource, BufferedImage> icons = new EnumMap<>(Resource.class);
+    for (Resource resource : Resource.values()) {
+      try (InputStream stream =
+          ViewImpl.class.getClassLoader().getResourceAsStream(resource.path)) {
+        if (stream == null) {
+          throw new IllegalStateException("Missing resource icon: " + resource.path);
+        }
+        BufferedImage image = ImageIO.read(stream);
+        if (image == null) {
+          throw new IllegalStateException("Unsupported resource icon: " + resource.path);
+        }
+        icons.put(resource, image);
+      } catch (IOException exception) {
+        throw new ExceptionInInitializerError(exception);
+      }
+    }
+    return Collections.unmodifiableMap(icons);
+  }
+
   private SimModel model() {
     return (SimModel) this.model;
   }
@@ -147,7 +229,6 @@ public class ViewImpl extends GridWorldView implements View {
     return switch (colorCode) {
       case "red" -> Color.RED;
       case "blue" -> Color.BLUE;
-      case "pink" -> Color.PINK;
       case "brown" -> new Color(139, 69, 19);
       case "black" -> Color.BLACK;
       case "white" -> Color.WHITE;
