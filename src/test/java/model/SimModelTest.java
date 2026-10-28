@@ -104,4 +104,41 @@ class SimModelTest {
         model.hasObject(SimModel.AGENT, station),
         "Station cell should not have agent bit since all agents are gone");
   }
+
+  @Test
+  void testEmergencyPerTypeLimit() {
+    SimModel freshModel = new SimModel(20, 20, 1, 0);
+    assertEquals(4, SimModel.MAX_EMERGENCIES_PER_TYPE);
+    int expectedTotalLimit = SimModel.MAX_EMERGENCIES_PER_TYPE * EmergencyType.values().length;
+    assertEquals(expectedTotalLimit, SimModel.getMaxEmergencyLimit());
+
+    int spawnedCount = 0;
+    while (freshModel.spawnEmergency().isPresent()) {
+      spawnedCount++;
+      for (EmergencyType type : EmergencyType.values()) {
+        assertTrue(
+            freshModel.countEmergencies(type) <= SimModel.MAX_EMERGENCIES_PER_TYPE,
+            "Count for type " + type + " should not exceed " + SimModel.MAX_EMERGENCIES_PER_TYPE);
+      }
+    }
+
+    assertEquals(expectedTotalLimit, spawnedCount, "Total spawned should reach the fixed limit");
+    assertEquals(expectedTotalLimit, freshModel.getEmergencies().size());
+
+    // Resolving one emergency of a specific type should allow spawning another of that exact type
+    Emergency removed = freshModel.getEmergencies().get(0);
+    EmergencyType freedType = removed.type();
+    assertTrue(freshModel.resolveEmergency(removed.id()).isPresent());
+    assertEquals(SimModel.MAX_EMERGENCIES_PER_TYPE - 1, freshModel.countEmergencies(freedType));
+
+    // Next spawn must be of the freed type
+    Emergency newEmergency = freshModel.spawnEmergency().orElseThrow();
+    assertEquals(
+        freedType,
+        newEmergency.type(),
+        "Spawned emergency must be of the only type with available capacity");
+    assertEquals(SimModel.MAX_EMERGENCIES_PER_TYPE, freshModel.countEmergencies(freedType));
+
+    assertTrue(freshModel.spawnEmergency().isEmpty(), "No more emergencies should spawn");
+  }
 }

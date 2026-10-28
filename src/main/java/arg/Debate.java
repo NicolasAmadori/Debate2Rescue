@@ -65,17 +65,6 @@ public class Debate {
   }
 
   /**
-   * Move of the emergency author: its claim is ahead of the one of target for reason
-   *
-   * @param author the emergency author of the move
-   * @param target the target emergency of the move
-   * @param reason the reason of the challenge
-   */
-  public void addChallenge(int author, int target, String reason) {
-    facts.add("challenged(" + author + ", " + target + ", " + reason + ").");
-  }
-
-  /**
    * Creates the arg2p theory of the debate with rules and facts
    *
    * @return a string with the theory

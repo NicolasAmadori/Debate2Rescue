@@ -39,13 +39,13 @@ public class ChooseTest {
 
   @Test
   public void testValueThatDoesNotBeatTheTargetIsSkipped() throws Exception {
-    // 10 already revealed severity 4, the same value of 11: only victims can put 11 ahead
+    // 10 revealed 6 victims answering 16, more than the 5 of 11: only trapped can put 11 ahead
     String moves =
         "[move(1, 10, claim), move(2, 11, claim), move(3, 16, claim),"
-            + " move(4, 16, challenge(10, severity, 2)), move(5, 10, answer(4, severity, 4))]";
+            + " move(4, 16, challenge(10, victims, 2)), move(5, 10, answer(4, victims, 6))]";
 
-    assertTrue(choose(moves, 11, 10, "[challenge(10, severity, 4), challenge(10, victims, 5)]"));
-    assertEquals("challenge(10,victims,5)", un.get(chosen).toString());
+    assertTrue(choose(moves, 11, 10, "[challenge(10, victims, 5), challenge(10, trapped, 1)]"));
+    assertEquals("challenge(10,trapped,1)", un.get(chosen).toString());
   }
 
   @Test

@@ -27,6 +27,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.text.DefaultStyledDocument;
+import model.SimModel;
 
 class SidePanel extends JPanel {
 
@@ -76,8 +77,10 @@ class SidePanel extends JPanel {
     maxEmergenciesSlider =
         new JSlider(
             1,
-            Config.getMaxEmergencyLimit(gridWidth, gridHeight),
-            Config.getMaxNumEmergencies(gridWidth, gridHeight));
+            SimModel.getMaxEmergencyLimit(),
+            Math.min(
+                Config.getMaxNumEmergencies(gridWidth, gridHeight),
+                SimModel.getMaxEmergencyLimit()));
     maxEmergenciesSlider.setBorder(BorderFactory.createTitledBorder(maxEmergenciesTitle()));
 
     JPanel sliders = new JPanel(new BorderLayout(0, 8));
