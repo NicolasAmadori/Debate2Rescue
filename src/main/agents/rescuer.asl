@@ -58,13 +58,10 @@ contender(RT, E) :- move(RT, _, E, claim).
 revealed(RT, E, R) :- move(RT, _, E, challenge(_, R, _)).
 revealed(RT, E, R) :- move(RT, _, E, answer(_, R, _)).
 
-// Reason R was raised between A and B, by either of them
-raised(RT, A, B, R) :- move(RT, _, A, challenge(B, R, _)).
-raised(RT, A, B, R) :- move(RT, _, B, challenge(A, R, _)).
-
-// The challenge M by A on reason R against my emergency is not answered
+// A revealed value counts against every contender
 unanswered(RT, Id, M, A, R) :-
-	move(RT, M, A, challenge(Id, R, _)) & contender(RT, A) & not revealed(RT, Id, R).
+	move(RT, M, A, C) & (C = challenge(_, R, V) | C = answer(_, R, V)) & worth(R, V) &
+	A \== Id & contender(RT, A) & not revealed(RT, Id, R).
 
 // The values I can reveal to answer the challenge M on R: my value for R first,
 // then the other ones I did not reveal yet, they can make an exception hold
@@ -72,9 +69,9 @@ answers(RT, Id, M, R, [answer(M, R, V) | Others]) :-
 	value(Id, R, V) &
 	.findall(answer(M, R2, V2), reasons(Reasons) & .member(R2, Reasons) & R2 \== R & not revealed(RT, Id, R2) & value(Id, R2, V2), Others).
 
-// The reasons I really have that were not raised between my emergency and T yet, the strongest first
+// The reasons I really have that I did not reveal yet, the strongest first
 challenges(RT, Id, T, Challenges) :-
-	.findall(challenge(T, R, V), reasons(Reasons) & .member(R, Reasons) & not raised(RT, Id, T, R) & value(Id, R, V) & worth(R, V), Challenges).
+	.findall(challenge(T, R, V), reasons(Reasons) & .member(R, Reasons) & not revealed(RT, Id, R) & value(Id, R, V) & worth(R, V), Challenges).
 
 // The moves of the debate, as arg.deliberate and arg.choose want them
 moves(RT, Moves) :- .findall(move(M, E, C), move(RT, M, E, C), Moves).
@@ -136,7 +133,7 @@ moves(RT, Moves) :- .findall(move(M, E, C), move(RT, M, E, C), Moves).
 +!kqml_received(orchestrator, Performative, move(RT, M, E, C), _) : .member(Performative, [argue, challenge, answer]) <-
 	+move(RT, M, E, C).
 
-// Who concedes withdraws its claim, so its moves and the ones against it stop counting.
+// Who concedes withdraws its claim, so its moves stop counting.
 @relay_concede[atomic]
 +!kqml_received(orchestrator, concede, move(RT, _, E, concede), _) <-
 	.abolish(move(RT, _, E, claim)).

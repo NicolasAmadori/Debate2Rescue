@@ -32,7 +32,7 @@ public class deliberate extends DefaultInternalAction {
    * @return the debate
    */
   static Debate debate(ListTerm moves, Set<Integer> only) throws Exception {
-    // who conceded has no claim anymore, its moves and the ones against it do not count
+    // who conceded has no claim anymore, its moves do not count
     Set<Integer> contenders = new HashSet<>();
     for (Term t : moves) {
       Literal move = (Literal) t;
@@ -54,17 +54,7 @@ public class deliberate extends DefaultInternalAction {
       }
       switch (content.getFunctor()) {
         case "claim" -> debate.addContender(author);
-        // challenge(Target, Reason, Value)
-        case "challenge" -> {
-          int target = intArg(content, 0);
-          String reason = content.getTerm(1).toString();
-          debate.addValue(id, author, reason, intArg(content, 2));
-          if (contenders.contains(target)) {
-            debate.addChallenge(author, target, reason);
-          }
-        }
-        // answer(Move, Reason, Value)
-        case "answer" ->
+        case "challenge", "answer" ->
             debate.addValue(id, author, content.getTerm(1).toString(), intArg(content, 2));
         default -> LOGGER.warning("Unknown move: " + move);
       }

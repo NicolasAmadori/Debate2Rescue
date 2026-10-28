@@ -7,7 +7,6 @@
     Facts to be handled Java-side:
         contender(E): emergency E claims the resource
         val(E, R, V): the rescuer of E revealed value V for reason R
-        challenged(E1, E2, R): emergency E1 challenged emergency E2 on reason R
 
 */
 
@@ -16,15 +15,15 @@ claim(E) : prolog(contender(E)) => grant(E).
 % the resource goes to one emergency only, excluding the claims of younger emergencies
 exclude(E1, E2) : grant(E1), prolog(contender(E2)), prolog(E1 < E2) -> -grant(E2).
 
-/* Evidence: E1 is ahead of E2 on reason R */
-% both values are known and E1 has the better one, on a reason that must have been raised between E1 and E2
-compare(R, E1, E2) : val(E1, R, V1), val(E2, R, V2), prolog(raised(E1, E2, R)), prolog(beats(R, V1, V2)) => ahead(R, E1, E2).
+/* Evidence: E1 is ahead of E2 on reason R, a revealed value counts against every contender */
+% both values are known and E1 has the better one
+compare(R, E1, E2) : val(E1, R, V1), val(E2, R, V2), prolog(beats(R, V1, V2)) => ahead(R, E1, E2).
 
-% a challenge holds as long as the target does not reveal its value for the reason
-challenge(R, E1, E2) : val(E1, R, V1), prolog(challenged(E1, E2, R)) => ahead(R, E1, E2).
+% a revealed value challenges every contender that did not reveal its own for the reason
+challenge(R, E1, E2) : val(E1, R, V1), prolog(worth(R, V1)), prolog(contender(E2)), prolog(E1 \== E2) => ahead(R, E1, E2).
 
 % revealing the value answers the challenge, from now on compare decides
-answer(R, E2, E1) : val(E2, R, V2), prolog(challenged(E1, E2, R)) => undercut(challenge(R, E1, E2)).
+answer(R, E2, E1) : val(E2, R, V2), prolog(contender(E1)), prolog(E1 \== E2) => undercut(challenge(R, E1, E2)).
 
 /* Principles */
 % being ahead on a reason puts E1 over E2, the exceptions below undercut this step
@@ -49,13 +48,13 @@ catastrophic(E) : val(E, collateral_risk, 1), val(E, size, S), prolog(S >= 2) ->
 major_disaster(E) : val(E, size, S), val(E, victims, V), prolog(S >= 2), prolog(V >= 3) -> major_disaster(E).
 
 /* Exceptions */
-life_first(E1, E2) : critical(E2), prolog(raised(E1, E2, waiting)), ~(critical(E1)) => undercut(rank(waiting, E1, E2)).
+life_first(E1, E2) : critical(E2), prolog(contender(E1)), prolog(E1 \== E2), ~(critical(E1)) => undercut(rank(waiting, E1, E2)).
 
-no_time(E1, E2) : spreading(E1), prolog(raised(E1, E2, severity)), ~(critical(E2)) => undercut(rank(severity, E2, E1)).
+no_time(E1, E2) : spreading(E1), prolog(contender(E2)), prolog(E1 \== E2), ~(critical(E2)) => undercut(rank(severity, E2, E1)).
 
-prevent_catastrophe(E1, E2) : catastrophic(E1), prolog(raised(E1, E2, severity)), ~(critical(E2)) => undercut(rank(severity, E2, E1)).
+prevent_catastrophe(E1, E2) : catastrophic(E1), prolog(contender(E2)), prolog(E1 \== E2), ~(critical(E2)) => undercut(rank(severity, E2, E1)).
 
-disaster_scale(E1, E2) : major_disaster(E2), prolog(raised(E1, E2, waiting)), ~(critical(E1)), ~(major_disaster(E1)) => undercut(rank(waiting, E1, E2)).
+disaster_scale(E1, E2) : major_disaster(E2), prolog(contender(E1)), prolog(E1 \== E2), ~(critical(E1)), ~(major_disaster(E1)) => undercut(rank(waiting, E1, E2)).
 
 /* Preferences */
 % being behind someone is stronger than the claim alone
@@ -79,9 +78,14 @@ strength(victims, 1).
 
 stronger(R1, R2) :- strength(R1, S1), strength(R2, S2), S1 > S2.
 
-/* Reason R was raised between E1 and E2, by either of them */
-raised(E1, E2, R) :- challenged(E1, E2, R).
-raised(E1, E2, R) :- challenged(E2, E1, R).
+/* Value V is a reason to be ahead of who did not reveal it, trapped = 0 is not */
+worth(waiting, V) :- V > 0.
+worth(severity, _).
+worth(collateral_risk, 1).
+worth(trapped, 1).
+worth(escalating, 1).
+worth(size, S) :- S > 0.
+worth(victims, V) :- V > 0.
 
 /* Value V1 is better than V2 for reason R */
 beats(waiting, V1, V2) :- V1 > V2.
