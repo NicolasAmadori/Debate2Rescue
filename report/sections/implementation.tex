@@ -1,1 +1,131 @@
 \section{Implementation}\label{sec:implementation}
+
+Debate2Rescue is a Gradle project in Java 21 built on the Jason interpreter (3.2.1) and the JVM distribution of Arg2P.
+
+\subsection{Environment and Model}\label{subsec:impl_environment}
+
+\texttt{EmergencyEnvironment} creates the rescuers and pilots at runtime, in the number chosen in the configuration dialog (\cref{subsec:initial_config}), and runs the simulation loop that spawns emergencies on the grid, an extension of Jason's \texttt{GridWorldModel}.
+Emergency ids come from a counter, so a lower id always means an older emergency, and both the orchestrator and the theory use this to break ties.
+The orchestrator perceives every responder and emergency, while a rescuer learns the attributes of its emergency only once it stands on it, such as its severity on the Emergency Severity Index (ESI, from 1 for the most severe to 5), the number of victims or its size.
+Jason runs environment actions on several threads, so the model's methods on emergencies and responders are \texttt{synchronized}.
+
+\subsection{The Debate Theory}\label{subsec:impl_theory}
+
+The domain rules shared by all agents are in \texttt{debate.pl}.
+They never change during a run, and the Java side only appends facts to them, \texttt{contender(E)} for each emergency still claiming the resource and \texttt{val(E, Reason, Value)} for each revealed value.
+\Cref{fig:impl_theory} shows the core rules, without the helper predicates, the situations and the exceptions, which are summarised in \cref{tab:impl_exceptions}.
+
+\begin{figure}[htbp]
+\centering
+\begin{minipage}{0.95\textwidth}
+\footnotesize
+\begin{verbatim}
+claim(E) : prolog(contender(E)) => grant(E).
+exclude(E1, E2) : grant(E1), prolog(contender(E2)), prolog(E1 < E2) -> -grant(E2).
+
+compare(R, E1, E2) : val(E1, R, V1), val(E2, R, V2), prolog(beats(R, V1, V2))
+    => ahead(R, E1, E2).
+challenge(R, E1, E2) : val(E1, R, V1), prolog(worth(R, V1)), prolog(contender(E2)),
+    prolog(E1 \== E2) => ahead(R, E1, E2).
+answer(R, E2, E1) : val(E2, R, V2), prolog(contender(E1)), prolog(E1 \== E2)
+    => undercut(challenge(R, E1, E2)).
+
+rank(R, E1, E2) : ahead(R, E1, E2) => over(E1, E2).
+asym(E1, E2) : over(E1, E2) -> -over(E2, E1).
+beaten(E1, E2) : over(E1, E2) => -grant(E2).
+
+sup(beaten(_, _), claim(_)).
+sup(rank(R1, _, _), rank(R2, _, _)) :- stronger(R1, R2).
+sup(claim(E1), claim(E2)) :- contender(E1), contender(E2), E1 < E2.
+\end{verbatim}
+\end{minipage}
+\caption{Core rules of \texttt{debate.pl}. The situations, the exceptions and the helper predicates are omitted.}
+\label{fig:impl_theory}
+\end{figure}
+
+Each contender has an initial claim to the resource, and a granted emergency excludes the younger ones, so with claims alone the oldest one wins.
+An emergency gets ahead of another on a reason through \texttt{challenge} or \texttt{compare}.
+A revealed value that counts as a reason, according to the helper \texttt{worth}, challenges every other contender at once.
+The challenged one undercuts it by revealing its own value for the same reason, and from then on \texttt{compare} decides between the two values.
+Being ahead turns into a ranking, and opposite rankings rebut each other, with the stronger reason prevailing.
+Waiting is the strongest reason, followed by severity, collateral risk, trapped victims, escalation, size and victims, and putting it on top is how the fairness requirement (\cref{subsec:non_functional_requirements}) is satisfied by the theory.
+An emergency with someone ranked over it loses its claim, and the arguments that used that claim to exclude younger contenders fall with it, which lets a younger emergency win.
+
+The exceptions in \cref{tab:impl_exceptions} protect an emergency in a particular situation by undercutting a ranking against it.
+They hold only while the penalised emergency is not critical, so they fall as soon as it reveals a severity of ESI 1 or 2.
+\texttt{disaster\_scale} also falls when the penalised emergency is a major disaster itself.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Exception} & \textbf{Protected emergency} & \textbf{Blocked ranking} \\
+\hline
+\texttt{life\_first} & critical (ESI $\le 2$) & on waiting \\
+\texttt{no\_time} & spreading (trapped and escalating) & on severity \\
+\texttt{prevent\_catastrophe} & catastrophic (collateral risk, size $\ge 2$) & on severity \\
+\texttt{disaster\_scale} & major disaster (size $\ge 2$, victims $\ge 3$) & on waiting \\
+\hline
+\end{tabular}
+\caption{Exceptions of the theory, with the situation of the emergency they protect and the ranking that they undercut.}
+\label{tab:impl_exceptions}
+\end{table}
+
+In the debate logged in \cref{fig:sample_debate_log}, emergency 10 takes the lead with a challenge on severity and loses it when 7 answers with the same ESI, since equal values leave the older claim ahead.
+On size, 7 answers with a larger value, and 10, with nothing left that helps, concedes.
+
+\subsection{Internal Actions}\label{subsec:impl_internal_actions}
+
+The class \texttt{Debate} appends the facts to the rules and evaluates the theory with Arg2P under the grounded labelling.
+The orchestrator calls \texttt{arg.deliberate(Moves, Labels)}, which turns the moves of a debate into facts and returns the labels of the rules as a Jason list.
+Challenges and answers both become values, since for the theory they differ only in who reveals what.
+
+The rescuers call \texttt{arg.choose(Moves, Me, Other, Candidates, Chosen)}.
+It rebuilds the debate with only the two emergencies involved, adds each candidate as a hypothetical move and returns the first one that improves the position of \texttt{Me} against \texttt{Other}, measured on the rankings that are IN.
+Some protected situations need two values, as spreading needs both trapped victims and escalation, so when no single candidate helps the action tries pairs, starting from those that can complete a situation and so trigger its exception, and returns the first value of the first pair that does.
+If nothing helps, it fails.
+
+\subsection{Agents}\label{subsec:impl_agents}
+
+Requests for the same resource type are buffered by the orchestrator in a window of five steps, run as a separate intention with \texttt{!!} so that it keeps reacting while the window is open.
+When it closes, the orchestrator grants the requests directly if enough pilots of the type are free, and opens a debate if only some are.
+Before each turn it evaluates the debate with \texttt{arg.deliberate}, and the turn rotates among the contenders whose claim is not IN, each receiving the goal \texttt{your\_turn(RT, Target)} with an opponent to target.
+Rescuers reply with the custom performatives \texttt{challenge}, \texttt{answer} and \texttt{concede}, handled through plans for Jason's \texttt{kqml\_received} goal that accept a move only from the rescuer holding the turn.
+Every move is relayed to all contenders, so each rescuer keeps the same copy of the debate as the orchestrator.
+When nobody is left to give the turn to, the winner gets the closest free pilot, which travels to the emergency and resolves it, while the losers are told \texttt{denied} and keep their requests pending, to be deliberated again as soon as a pilot of that type is free.
+
+A rescuer maps its emergency onto the seven reasons of the theory, using the number of debates it has lost as its value for waiting.
+On its turn it runs the plan in \Cref{fig:impl_rescuer_turn}, where \texttt{requesting} holds its request and \texttt{moves} its copy of the debate.
+
+\begin{figure}[htbp]
+\centering
+\begin{minipage}{0.95\textwidth}
+\footnotesize
+\begin{verbatim}
++!your_turn(RT, T)[source(orchestrator)]
+    : requesting(Id, RT, _) & moves(RT, Moves) <-
+    if (unanswered(RT, Id, M, A, R) & answers(RT, Id, M, R, Answers) &
+        arg.choose(Moves, Id, A, Answers, answer(M, R2, V))) {
+        .send(orchestrator, answer, answer(RT, M, R2, V));
+    } elif (challenges(RT, Id, T, Challenges) &
+            arg.choose(Moves, Id, T, Challenges, challenge(T, AR, AV))) {
+        .send(orchestrator, challenge, challenge(RT, T, AR, AV));
+    } else {
+        .send(orchestrator, concede, concede(RT));
+    }.
+\end{verbatim}
+\end{minipage}
+\caption{The plan of \texttt{rescuer.asl} that picks the rescuer's move on its turn.}
+\label{fig:impl_rescuer_turn}
+\end{figure}
+
+The rescuer first tries to answer a challenge it has not answered yet, offering its value for that reason and then its other unrevealed values, since a different value can trigger an exception.
+Otherwise it challenges its target with its unrevealed values from the strongest reason down, and if nothing helps it concedes.
+
+\subsection{Logging and Testing}\label{subsec:impl_view}
+
+The orchestrator logs every debate through environment actions that forward the events to \texttt{DebateLogger}, which writes one file per debate (\cref{subsec:persistent_logs}) and updates the side panel.
+With each status update the orchestrator logs the rank and exception rules that are IN, and the logger uses the final list as the justification of the debate or, if it is empty because the others conceded, the last reason seen during the debate.
+
+JUnit tests cover the theory rule by rule, the move choice of \texttt{arg.choose}, the environment and the model, and a GitHub Actions workflow runs them, together with a Spotless formatting check, on every pull request towards \texttt{main} and \texttt{develop}.
