@@ -40,12 +40,18 @@
 \maketitle
 
 \begin{abstract}
-\TODO{abstract}
+When several emergencies need the same scarce rescue resources, a priority score picks one quickly but hides why it was preferred, and gives no way to argue for an exception.
+Debate2Rescue is a multi-agent system that allocates these resources through argumentation-based negotiation.
+Rescuer agents reach the emergencies that appear on a simulated grid and request the specialised units they need, which pilot agents then bring to the scene, while an orchestrator dispatches the rescuers and runs the debates.
+The rescuers take turns revealing facts about their emergency, such as its severity or how often it has been denied, and withdraw when nothing would improve their position.
+After every move, a shared rule base written in Arg2P is evaluated under grounded semantics to find the request that currently wins.
+Repeated denials weigh the most, so waiting requests gain ground, but exceptions protect emergencies in especially dangerous situations, such as those with a critical patient.
+The agents are written in Jason, and every debate is logged with the arguments that decided it.
 \end{abstract}
 
 \section*{AI Disclaimer}
 
-During the preparation of this work, the authors used LLMs to help the development and to fix grammar errors in the report.
+During the preparation of this work, the authors used LLMs to help the development, to fix grammar errors in the report and improve clarity.
 
 After using these tools/services, the authors reviewed and edited the content as needed and take full responsibility for the content of the final report and artifact.
 
