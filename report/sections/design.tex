@@ -71,13 +71,11 @@ The argumentation theory models claims, evidence, principles, and preference rul
 Standard agent communication languages provide general-purpose performatives, but lack speech acts dedicated to argumentation. We extend agent communication in Jason by introducing four custom performatives handled via the \texttt{+!kqml\_received} pattern:
 
 \begin{itemize}
-    \item \texttt{argue}: Used by the orchestrator to announce the start of a debate and broadcast claims or newly admitted moves to all contenders.
-    \item \texttt{challenge}: Used by a contending rescuer to attack a competitor by revealing an emergency attribute where it holds an advantage.
-    \item \texttt{answer}: Used by a challenged rescuer to defend its claim, either by revealing a better value on the challenged reason or by introducing features that trigger an exception undercut.
-    \item \texttt{concede}: Used by a rescuer to withdraw its claim when it cannot construct any valid move that improves its standing under \textsf{Arg2P}.
+    \item \texttt{argue}: Sent by the orchestrator to all contending rescuers to formally initiate a debate and broadcast the contenders' initial claims (\texttt{move(RT, M, E, claim)}) for the contested resource type.
+    \item \texttt{challenge}: Sent by a rescuer on its turn to the orchestrator (and relayed to all contenders) to attack a target competitor's claim by revealing an emergency attribute and its value (\texttt{challenge(RT, Target, Reason, Value)}) where the attacker holds an advantage.
+    \item \texttt{answer}: Sent by a challenged rescuer to the orchestrator (and relayed to all contenders) to defend its claim against a specific challenge move ID, either by revealing a superior value on the disputed reason or by disclosing attributes that trigger an exception undercut.
+    \item \texttt{concede}: Sent by a rescuer to the orchestrator when \textsf{Arg2P} finds no admissible move that improves its position. The orchestrator removes the rescuer from the active turn rotation, notifies remaining contenders to retract the conceded claim, and marks the request as denied for the current allocation round.
 \end{itemize}
-
-\TODO{Add table summarizing the custom performatives (argue, challenge, answer, concede), including sender, receiver, payload parameters, and operational semantics.}
 
 \TODO{Add sequence diagram illustrating the turn-based debate dialogue between the Orchestrator and competing Rescuers.}
 
