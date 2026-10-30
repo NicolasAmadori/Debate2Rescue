@@ -161,6 +161,21 @@ public class DebateTest {
   }
 
   @Test
+  public void testWorstValueDoesNotChallenge() {
+    // severity 5 and size 1 cannot beat anyone, they do not put 4 ahead of who did not reveal them
+    d.addContender(1);
+    d.addContender(4);
+    d.addValue(1, 4, "severity", 5);
+    d.addValue(2, 4, "size", 1);
+
+    Map<String, String> evaluation = d.evaluate();
+    assertNull(evaluation.get("challenge(severity, 4, 1)"));
+    assertNull(evaluation.get("challenge(size, 4, 1)"));
+    assertEquals(IN, evaluation.get(buildClaim(1)));
+    assertEquals(OUT, evaluation.get(buildClaim(4)));
+  }
+
+  @Test
   public void testCriticalIsNotOvertakenByWaiting() {
     // 7 waited more, but 3 is critical
     d.addContender(3);

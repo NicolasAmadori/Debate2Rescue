@@ -78,13 +78,14 @@ strength(victims, 1).
 
 stronger(R1, R2) :- strength(R1, S1), strength(R2, S2), S1 > S2.
 
-/* Value V is a reason to be ahead of who did not reveal it, trapped = 0 is not */
+/* Value V is a reason to be ahead of who did not reveal it: the worst value cannot beat anyone, so it is not one
+   (trapped = 0, severity 5, size 1), keep it in sync with worth in rescuer.asl */
 worth(waiting, V) :- V > 0.
-worth(severity, _).
+worth(severity, S) :- S < 5.
 worth(collateral_risk, 1).
 worth(trapped, 1).
 worth(escalating, 1).
-worth(size, S) :- S > 0.
+worth(size, S) :- S > 1.
 worth(victims, V) :- V > 0.
 
 /* Value V1 is better than V2 for reason R */
