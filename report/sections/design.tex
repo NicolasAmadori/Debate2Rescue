@@ -52,14 +52,15 @@ The overall response cycle proceeds through four sequential phases:
     \item \textbf{Rescue Execution:} The pilot assigned to the winning emergency travels to the site. The time required to resolve the emergency is proportional to the incident difficulty. Once resolved, the emergency is cleared from the environment, and both the rescuer and the pilot return to their base station, informing the orchestrator that they are free. Rescuers whose claims were denied remain on-site and increment their denial counter, gaining priority in subsequent allocation rounds.
 \end{enumerate}
 
-\subsubsection{Argumentation Model} %TODO: check if can refine or improve
+\subsubsection{Argumentation Model}
 
 Resource allocation disputes are solved through structured argumentation rather than numerical scoring functions.
 
 The argumentation theory models claims, evidence, principles, and preference rules:
 \begin{itemize}
-    \item \textbf{Claims:} Contenders assert a claim for the resource (\texttt{claim(E)}). Initial claims temporarly grant the resource based merely on the emergency id $E$, oldest first.
-    \item \textbf{Compare:} When two contenders have presented their values for the same reason $R$, they are automatically compared and who wins get an advantage. Advantages are ranked based on the strength of their reason $R$:
+    \item \textbf{Claims:} Contenders assert a claim for the resource (\texttt{claim(E)}). Initial claims temporarily grant the resource based merely on the emergency id $E$, oldest first.
+    \item \textbf{Challenge:} Revealing a value for a reason $R$ puts an emergency ahead of every contender that has not revealed its own value for $R$. The worst values, such as ESI 5, cannot be used this way.
+    \item \textbf{Compare:} When two contenders have presented their values for the same reason $R$, they are automatically compared and the better value puts its emergency ahead. Being ahead ranks an emergency over the other, and an emergency ranked below someone loses its claim. Opposite rankings are settled by the strength of their reason $R$:
     \begin{center}
     \texttt{critical} $>$ \texttt{waiting} $>$ \texttt{catastrophic} $>$ \texttt{major\_disaster} $>$ \texttt{spreading} $>$ \texttt{severity} $>$ \texttt{collateral\_risk} $>$ \texttt{trapped} $>$ \texttt{escalating} $>$ \texttt{size} $>$ \texttt{victims}
     \end{center}
@@ -73,7 +74,7 @@ The argumentation theory models claims, evidence, principles, and preference rul
         \item \texttt{spreading}: People are trapped and the incident is escalating.
     \end{itemize}
     
-    \item \textbf{Tie-Breaking:} If two claims have identical attributes, the older emergency ID wins.
+    \item \textbf{Tie-Breaking:} If no reason sets two emergencies apart, the older emergency ID wins.
 \end{itemize}
 
 \subsubsection{Custom Performatives}
