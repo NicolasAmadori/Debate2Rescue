@@ -9,28 +9,23 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Debate {
   private static final String RULES = load("debate.pl");
+  private static final Map<String, Map<String, String>> EVALUATION_CACHE =
+      new ConcurrentHashMap<>();
 
   // the top rules whose labels are returned by evaluate
   private static final List<String> RETURNED =
-      List.of(
-          "claim(",
-          "rank(",
-          "compare(",
-          "challenge(",
-          "answer(",
-          "life_first(",
-          "no_time(",
-          "prevent_catastrophe(",
-          "disaster_scale(");
+      List.of("claim(", "rank(", "compare(", "challenge(", "answer(", "in_situation(");
 
   // from the best to the worst label for who makes the argument
   private static final List<String> LABELS = List.of("in", "und", "out");
@@ -39,6 +34,10 @@ public class Debate {
 
   // reasons already revealed, as emergency:reason, a value is revealed only once
   private Set<String> revealed = new HashSet<>();
+
+  public static void clearCache() {
+    EVALUATION_CACHE.clear();
+  }
 
   /**
    * Adds an emergency claiming the resource.
@@ -65,6 +64,17 @@ public class Debate {
   }
 
   /**
+   * Move of the emergency author: its claim is ahead of the one of target for reason
+   *
+   * @param author the emergency author of the move
+   * @param target the target emergency of the move
+   * @param reason the reason of the challenge
+   */
+  public void addChallenge(int author, int target, String reason) {
+    facts.add("challenged(" + author + ", " + target + ", " + reason + ").");
+  }
+
+  /**
    * Creates the arg2p theory of the debate with rules and facts
    *
    * @return a string with the theory
@@ -76,13 +86,18 @@ public class Debate {
   /**
    * Evaluates the theory with grounded semantics.
    *
-   * @return the labels of the claims, comparisons, principles and exceptions, keyed by top rule
+   * @return the labels of the claims, comparisons, principles and situations, keyed by top rule
    */
   public Map<String, String> evaluate() {
+    String theoryKey = theory();
+    Map<String, String> cached = EVALUATION_CACHE.get(theoryKey);
+    if (cached != null) {
+      return cached;
+    }
     Map<String, String> labels = new LinkedHashMap<>();
     // we use grounded labelling so the result is only one graph
     Iterator<Graph> graphs =
-        Arg2pSolverFactory.INSTANCE.evaluate(theory(), new FlagsBuilder()).iterator();
+        Arg2pSolverFactory.INSTANCE.evaluate(theoryKey, new FlagsBuilder()).iterator();
     if (graphs.hasNext()) {
       for (LabelledArgument arg : graphs.next().getLabellings()) {
         String rule = arg.getArgument().getTopRule();
@@ -93,7 +108,9 @@ public class Debate {
         }
       }
     }
-    return labels;
+    Map<String, String> unmodifiable = Collections.unmodifiableMap(labels);
+    EVALUATION_CACHE.put(theoryKey, unmodifiable);
+    return unmodifiable;
   }
 
   private static String best(String l1, String l2) {

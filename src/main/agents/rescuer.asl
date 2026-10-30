@@ -41,13 +41,14 @@ value(Id, escalating, 0) :- requesting(Id, _, F) & not .member(escalating, F).
 value(Id, size, S) :- requesting(Id, _, F) & .member(size(S), F).
 value(Id, victims, V) :- requesting(Id, _, F) & .member(victims(V), F).
 
-// I challenge only with a reason I really have, I am not trapped is not a reason
+// Challenges are sent only for meaningful values, minimum values are not relevant
+// keep it in sync with worth in debate.pl
 worth(waiting, N) :- N > 0.
-worth(severity, _).
+worth(severity, S) :- S < 5.
 worth(collateral_risk, 1).
 worth(trapped, 1).
 worth(escalating, 1).
-worth(size, S) :- S > 0.
+worth(size, S) :- S > 1.
 worth(victims, V) :- V > 0.
 
 // Emergency E has a claim in the debate for RT, who conceded has not
