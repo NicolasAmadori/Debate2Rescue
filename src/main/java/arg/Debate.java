@@ -25,16 +25,7 @@ public class Debate {
 
   // the top rules whose labels are returned by evaluate
   private static final List<String> RETURNED =
-      List.of(
-          "claim(",
-          "rank(",
-          "compare(",
-          "challenge(",
-          "answer(",
-          "life_first(",
-          "no_time(",
-          "prevent_catastrophe(",
-          "disaster_scale(");
+      List.of("claim(", "rank(", "compare(", "challenge(", "answer(", "in_situation(");
 
   // from the best to the worst label for who makes the argument
   private static final List<String> LABELS = List.of("in", "und", "out");
@@ -95,7 +86,7 @@ public class Debate {
   /**
    * Evaluates the theory with grounded semantics.
    *
-   * @return the labels of the claims, comparisons, principles and exceptions, keyed by top rule
+   * @return the labels of the claims, comparisons, principles and situations, keyed by top rule
    */
   public Map<String, String> evaluate() {
     String theoryKey = theory();

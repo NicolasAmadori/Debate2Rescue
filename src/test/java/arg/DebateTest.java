@@ -161,6 +161,21 @@ public class DebateTest {
   }
 
   @Test
+  public void testWorstValueDoesNotChallenge() {
+    // severity 5 and size 1 cannot beat anyone, they do not put 4 ahead of who did not reveal them
+    d.addContender(1);
+    d.addContender(4);
+    d.addValue(1, 4, "severity", 5);
+    d.addValue(2, 4, "size", 1);
+
+    Map<String, String> evaluation = d.evaluate();
+    assertNull(evaluation.get("challenge(severity, 4, 1)"));
+    assertNull(evaluation.get("challenge(size, 4, 1)"));
+    assertEquals(IN, evaluation.get(buildClaim(1)));
+    assertEquals(OUT, evaluation.get(buildClaim(4)));
+  }
+
+  @Test
   public void testCriticalIsNotOvertakenByWaiting() {
     // 7 waited more, but 3 is critical
     d.addContender(3);
@@ -170,7 +185,8 @@ public class DebateTest {
     d.addValue(2, 3, "severity", 1);
 
     Map<String, String> evaluation = d.evaluate();
-    assertEquals(IN, evaluation.get("life_first(7, 3)"));
+    assertEquals(IN, evaluation.get("in_situation(critical, 3, 7)"));
+    assertEquals(IN, evaluation.get("rank(critical, 3, 7)"));
     assertEquals(OUT, evaluation.get("rank(waiting, 7, 3)"));
     assertEquals(IN, evaluation.get(buildClaim(3)));
     assertEquals(OUT, evaluation.get(buildClaim(7)));
@@ -178,7 +194,7 @@ public class DebateTest {
 
   @Test
   public void testWaitingCountsBetweenCriticalEmergencies() {
-    // 7 shows it is critical too, the exception does not hold anymore
+    // 7 shows it is critical too, being critical does not put 3 ahead anymore
     d.addContender(3);
     d.addContender(7);
     d.addValue(1, 7, "waiting", 1);
@@ -186,7 +202,7 @@ public class DebateTest {
     d.addValue(3, 7, "severity", 2);
 
     Map<String, String> evaluation = d.evaluate();
-    assertEquals(OUT, evaluation.get("life_first(7, 3)"));
+    assertEquals(OUT, evaluation.get("in_situation(critical, 3, 7)"));
     assertEquals(IN, evaluation.get("rank(waiting, 7, 3)"));
     assertEquals(OUT, evaluation.get(buildClaim(3)));
     assertEquals(IN, evaluation.get(buildClaim(7)));
@@ -203,16 +219,55 @@ public class DebateTest {
     d.addValue(4, 5, "escalating", 1);
 
     Map<String, String> evaluation = d.evaluate();
-    assertEquals(IN, evaluation.get("no_time(5, 2)"));
+    assertEquals(IN, evaluation.get("rank(spreading, 5, 2)"));
     assertEquals(OUT, evaluation.get("rank(severity, 2, 5)"));
-    assertEquals(IN, evaluation.get("rank(trapped, 5, 2)"));
+    assertEquals(OUT, evaluation.get(buildClaim(2)));
+    assertEquals(IN, evaluation.get(buildClaim(5)));
+  }
+
+  @Test
+  public void testSpreadingWinsOverCollateralRisk() {
+    // 2 has a lower ESI and collateral risk, both weaker than the spreading emergency of 5
+    d.addContender(2);
+    d.addContender(5);
+    d.addValue(1, 5, "trapped", 1);
+    d.addValue(2, 5, "escalating", 1);
+    d.addValue(3, 5, "severity", 4);
+    d.addValue(4, 5, "collateral_risk", 0);
+    d.addValue(5, 2, "severity", 3);
+    d.addValue(6, 2, "collateral_risk", 1);
+    d.addValue(7, 2, "trapped", 0);
+
+    Map<String, String> evaluation = d.evaluate();
+    assertEquals(IN, evaluation.get("rank(spreading, 5, 2)"));
+    assertEquals(OUT, evaluation.get("rank(collateral_risk, 2, 5)"));
+    assertEquals(IN, evaluation.get(buildClaim(5)));
+    assertEquals(OUT, evaluation.get(buildClaim(2)));
+  }
+
+  @Test
+  public void testSeverityDecidesBetweenSpreadingEmergencies() {
+    // both are spreading, so the next reason decides: 5 has the lower ESI
+    d.addContender(2);
+    d.addContender(5);
+    d.addValue(1, 2, "trapped", 1);
+    d.addValue(2, 2, "escalating", 1);
+    d.addValue(3, 2, "severity", 5);
+    d.addValue(4, 5, "trapped", 1);
+    d.addValue(5, 5, "escalating", 1);
+    d.addValue(6, 5, "severity", 3);
+
+    Map<String, String> evaluation = d.evaluate();
+    assertEquals(OUT, evaluation.get("in_situation(spreading, 2, 5)"));
+    assertEquals(OUT, evaluation.get("in_situation(spreading, 5, 2)"));
+    assertEquals(IN, evaluation.get("rank(severity, 5, 2)"));
     assertEquals(OUT, evaluation.get(buildClaim(2)));
     assertEquals(IN, evaluation.get(buildClaim(5)));
   }
 
   @Test
   public void testCriticalStillWinsOverSpreading() {
-    // 2 is critical: severity holds again
+    // 2 is critical: it is ahead of the spreading emergency of 5
     d.addContender(2);
     d.addContender(5);
     d.addValue(1, 5, "trapped", 1);
@@ -221,14 +276,14 @@ public class DebateTest {
     d.addValue(4, 5, "escalating", 1);
 
     Map<String, String> evaluation = d.evaluate();
-    assertEquals(OUT, evaluation.get("no_time(5, 2)"));
-    assertEquals(IN, evaluation.get("rank(severity, 2, 5)"));
+    assertEquals(IN, evaluation.get("rank(critical, 2, 5)"));
+    assertEquals(OUT, evaluation.get("rank(spreading, 5, 2)"));
     assertEquals(IN, evaluation.get(buildClaim(2)));
     assertEquals(OUT, evaluation.get(buildClaim(5)));
   }
 
   @Test
-  public void testPreventCatastropheUndercutsSeverity() {
+  public void testCatastrophicIsNotOvertakenOnSeverity() {
     // 2 has lower ESI (3 vs 4), but 5 threatens collateral damage at scale (size 2, collateral_risk
     // 1)
     d.addContender(2);
@@ -239,16 +294,15 @@ public class DebateTest {
     d.addValue(4, 5, "size", 2);
 
     Map<String, String> evaluation = d.evaluate();
-    assertEquals(IN, evaluation.get("prevent_catastrophe(5, 2)"));
+    assertEquals(IN, evaluation.get("rank(catastrophic, 5, 2)"));
     assertEquals(OUT, evaluation.get("rank(severity, 2, 5)"));
-    assertEquals(IN, evaluation.get("rank(collateral_risk, 5, 2)"));
     assertEquals(OUT, evaluation.get(buildClaim(2)));
     assertEquals(IN, evaluation.get(buildClaim(5)));
   }
 
   @Test
   public void testCriticalStillWinsOverCatastrophic() {
-    // 2 is critical (ESI 2): severity holds against catastrophe exception
+    // 2 is critical (ESI 2): it is ahead of the catastrophic emergency of 5
     d.addContender(2);
     d.addContender(5);
     d.addValue(1, 5, "collateral_risk", 1);
@@ -257,43 +311,115 @@ public class DebateTest {
     d.addValue(4, 5, "size", 2);
 
     Map<String, String> evaluation = d.evaluate();
-    assertEquals(OUT, evaluation.get("prevent_catastrophe(5, 2)"));
-    assertEquals(IN, evaluation.get("rank(severity, 2, 5)"));
+    assertEquals(IN, evaluation.get("rank(critical, 2, 5)"));
+    assertEquals(OUT, evaluation.get("rank(catastrophic, 5, 2)"));
     assertEquals(IN, evaluation.get(buildClaim(2)));
     assertEquals(OUT, evaluation.get(buildClaim(5)));
   }
 
   @Test
-  public void testDisasterScaleUndercutsWaiting() {
-    // 1 waited more (waiting 2 vs 0), but 2 is a major disaster (size 2, victims 4)
+  public void testMajorDisasterIsNotOvertakenOnSeverity() {
+    // 1 has lower ESI (3 vs 4), but 2 is a major disaster (size 3, victims 8)
     d.addContender(1);
     d.addContender(2);
-    d.addValue(1, 1, "waiting", 2);
-    // 2 reveals it is a major disaster
-    d.addValue(2, 2, "size", 2);
-    d.addValue(3, 2, "victims", 4);
+    d.addValue(1, 1, "severity", 3);
+    d.addValue(2, 2, "severity", 4);
+    d.addValue(3, 2, "size", 3);
+    d.addValue(4, 2, "victims", 8);
 
     Map<String, String> evaluation = d.evaluate();
-    assertEquals(IN, evaluation.get("disaster_scale(1, 2)"));
-    assertEquals(OUT, evaluation.get("rank(waiting, 1, 2)"));
+    assertEquals(IN, evaluation.get("rank(major_disaster, 2, 1)"));
+    assertEquals(OUT, evaluation.get("rank(severity, 1, 2)"));
     assertEquals(OUT, evaluation.get(buildClaim(1)));
     assertEquals(IN, evaluation.get(buildClaim(2)));
   }
 
   @Test
-  public void testCriticalStillWinsOverDisasterScale() {
-    // 1 is critical (ESI 1): waiting holds even against major disaster
+  public void testMediumSizeIsNotAMajorDisaster() {
+    // 2 has many victims (15), but its size is only 2: severity decides
+    d.addContender(1);
+    d.addContender(2);
+    d.addValue(1, 1, "severity", 3);
+    d.addValue(2, 2, "severity", 4);
+    d.addValue(3, 2, "size", 2);
+    d.addValue(4, 2, "victims", 15);
+
+    Map<String, String> evaluation = d.evaluate();
+    assertNull(evaluation.get("rank(major_disaster, 2, 1)"));
+    assertEquals(IN, evaluation.get("rank(severity, 1, 2)"));
+    assertEquals(IN, evaluation.get(buildClaim(1)));
+    assertEquals(OUT, evaluation.get(buildClaim(2)));
+  }
+
+  @Test
+  public void testWaitingStillWinsOverMajorDisaster() {
+    // 1 waited more (waiting 2 vs 0): only a critical emergency gets ahead of it
     d.addContender(1);
     d.addContender(2);
     d.addValue(1, 1, "waiting", 2);
-    d.addValue(2, 1, "severity", 1);
-    d.addValue(3, 2, "size", 2);
-    d.addValue(4, 2, "victims", 4);
+    d.addValue(2, 2, "size", 3);
+    d.addValue(3, 2, "victims", 8);
 
     Map<String, String> evaluation = d.evaluate();
-    assertEquals(OUT, evaluation.get("disaster_scale(1, 2)"));
     assertEquals(IN, evaluation.get("rank(waiting, 1, 2)"));
+    assertEquals(OUT, evaluation.get("rank(major_disaster, 2, 1)"));
     assertEquals(IN, evaluation.get(buildClaim(1)));
     assertEquals(OUT, evaluation.get(buildClaim(2)));
+  }
+
+  @Test
+  public void testCriticalStillWinsOverMajorDisaster() {
+    // 2 waited more and is a major disaster, but 1 is critical (ESI 1)
+    d.addContender(1);
+    d.addContender(2);
+    d.addValue(1, 2, "waiting", 2);
+    d.addValue(2, 1, "severity", 1);
+    d.addValue(3, 2, "size", 3);
+    d.addValue(4, 2, "victims", 8);
+
+    Map<String, String> evaluation = d.evaluate();
+    assertEquals(IN, evaluation.get("rank(critical, 1, 2)"));
+    assertEquals(OUT, evaluation.get("rank(waiting, 2, 1)"));
+    assertEquals(IN, evaluation.get(buildClaim(1)));
+    assertEquals(OUT, evaluation.get(buildClaim(2)));
+  }
+
+  @Test
+  public void testCatastrophicWinsOverMajorDisaster() {
+    // 1 is a major disaster, 2 is catastrophic
+    d.addContender(1);
+    d.addContender(2);
+    d.addValue(1, 1, "size", 3);
+    d.addValue(2, 1, "victims", 8);
+    d.addValue(3, 1, "collateral_risk", 0);
+    d.addValue(4, 2, "size", 2);
+    d.addValue(5, 2, "victims", 1);
+    d.addValue(6, 2, "collateral_risk", 1);
+
+    Map<String, String> evaluation = d.evaluate();
+    assertEquals(IN, evaluation.get("rank(catastrophic, 2, 1)"));
+    assertEquals(OUT, evaluation.get("rank(major_disaster, 1, 2)"));
+    assertEquals(OUT, evaluation.get(buildClaim(1)));
+    assertEquals(IN, evaluation.get(buildClaim(2)));
+  }
+
+  @Test
+  public void testMajorDisasterWinsOverSpreading() {
+    // 1 is spreading, 2 is a major disaster
+    d.addContender(1);
+    d.addContender(2);
+    d.addValue(1, 1, "trapped", 1);
+    d.addValue(2, 1, "escalating", 1);
+    d.addValue(3, 1, "size", 1);
+    d.addValue(4, 1, "victims", 2);
+    d.addValue(5, 2, "trapped", 0);
+    d.addValue(6, 2, "size", 3);
+    d.addValue(7, 2, "victims", 8);
+
+    Map<String, String> evaluation = d.evaluate();
+    assertEquals(IN, evaluation.get("rank(major_disaster, 2, 1)"));
+    assertEquals(OUT, evaluation.get("rank(spreading, 1, 2)"));
+    assertEquals(OUT, evaluation.get(buildClaim(1)));
+    assertEquals(IN, evaluation.get(buildClaim(2)));
   }
 }
