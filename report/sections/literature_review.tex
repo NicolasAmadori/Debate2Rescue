@@ -2,17 +2,21 @@
 
 \subsection{Abstract and Structured Argumentation}
 
-Formal argumentation largely builds on the \emph{abstract argumentation frameworks} of \citet{dung1995}, where arguments have no internal structure and a framework is a set of arguments with a binary attack relation.
-%TODO: is it clearly explained?
-A grounded \emph{semantics}, which we use to evaluate our debates, captures a skeptical reasoner and always yields a single extension, built from the unattacked arguments by repeatedly adding the ones they defend.
+Argumentation draws conclusions from incomplete or conflicting information by weighing arguments for and against a claim.
+Most formal work builds on the abstract frameworks of \citet{dung1995}, where arguments have no internal structure and a framework is a set of arguments with a binary attack relation.
+A semantics then selects the sets of arguments, called extensions, that can be accepted together.
+A set defends an argument when it attacks all of its attackers.
+We use the grounded semantics, a skeptical one that starts from the unattacked arguments and repeatedly adds those defended by the arguments accepted so far.
+As a result, two arguments that attack each other are both left out unless another accepted argument defends one of them.
+Unlike semantics that admit several alternative extensions, the grounded one always yields exactly one, so each evaluation of a debate has a single result.
 
-While abstract frameworks do not say how arguments are built or why they attack each other, \emph{structured} argumentation fills this gap by building arguments from strict and defeasible rules, so that attacks follow from their structure.
+\emph{Structured} argumentation looks inside the arguments, building them from strict and defeasible rules, so that attacks follow from their structure.
 An argument can contradict the conclusion of another one (rebutting), one of its premises (undermining), or deny that one of its defeasible rules applies (undercutting)~\citep{modgil2014aspic}.
 Our debates rely on rebuttals and undercutters, while undermining plays no role.
 
 Arg2P~\citep{calegari2022arg2p} is an ASPIC+-like system built on top of 2P-Kt.
 Rules are written in an enriched Prolog syntax and preferences between them are stated through a superiority relation.
-The resulting graph is evaluated with a labelling semantics, which marks each argument as accepted (\texttt{IN}), rejected (\texttt{OUT}) or undecided (\texttt{UND}).
+The resulting graph is evaluated with a labelling semantics, grounded in our case, which marks each argument as accepted (\texttt{IN}), rejected (\texttt{OUT}) or undecided (\texttt{UND}).
 Its authors present it as a lightweight library, meant to be embedded in a larger system and called only where reasoning is needed.
 Since it is built on logic programming, its conclusions can be traced back to readable rules, increasing explainability.
 In our project, Arg2P is used by the orchestrator to evaluate the ongoing debate, and by the rescuers to pick their moves.
@@ -21,7 +25,6 @@ In our project, Arg2P is used by the orchestrator to evaluate the ongoing debate
 
 \subsection{Argumentation in Multi-Agent Systems}
 
-% TODO: check these unused citations: pisano2023coop and prakken2006
 \citet{calegari2022arg2p} observe that the abstract argumentation perspective tends to see argumentation as a one-sided process in which a single party justifies a claim, while in practice it is usually an exchange between several contributors, as in multi-agent systems.
 \citet{rahwan2003} survey \emph{argumentation-based negotiation}, where agents with conflicting interests, typically competing for scarce resources, exchange arguments that justify their stance or try to influence the others.
 They contrast it with heuristic approaches, in most of which agents can only exchange proposals and accept or reject them.
