@@ -77,7 +77,14 @@ Standard agent communication languages provide general-purpose performatives, bu
     \item \texttt{concede}: Sent by a rescuer to the orchestrator when \textsf{Arg2P} finds no admissible move that improves its position. The orchestrator removes the rescuer from the active turn rotation, notifies remaining contenders to retract the conceded claim, and marks the request as denied for the current allocation round.
 \end{itemize}
 
-\TODO{Add sequence diagram illustrating the turn-based debate dialogue between the Orchestrator and competing Rescuers.}
+The end-to-end turn-based debate protocol between the Orchestrator and contending Rescuers is illustrated in \Cref{fig:debate_sequence}. When resource contention occurs at the closure of a request window, the Orchestrator opens a debate and broadcasts the initial claims via \texttt{argue}. In subsequent turns, agents evaluate their local knowledge through \textsf{Arg2P}, issuing attacks (\texttt{challenge}) or defenses (\texttt{answer}), which the Orchestrator records and relays to maintain synchronized debate models across all contenders. Once a contender cannot construct an improving move, it emits \texttt{concede}, allowing the Orchestrator to conclude deliberation and dispatch the disputed resource to the winner.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/debate_sequence.png}
+    \caption{Sequence diagram illustrating the turn-based debate dialogue between the Orchestrator and competing Rescuers, covering request contention, claim initialization (\texttt{argue}), targeted attack (\texttt{challenge}), defense (\texttt{answer}), concession (\texttt{concede}), and resource dispatch.}
+    \label{fig:debate_sequence}
+\end{figure}
 
 \subsubsection{Internal Actions}
 
