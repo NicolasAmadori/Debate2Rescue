@@ -335,6 +335,23 @@ public class DebateTest {
   }
 
   @Test
+  public void testMediumSizeIsNotAMajorDisaster() {
+    // 2 has many victims (15), but its size is only 2: severity decides
+    d.addContender(1);
+    d.addContender(2);
+    d.addValue(1, 1, "severity", 3);
+    d.addValue(2, 2, "severity", 4);
+    d.addValue(3, 2, "size", 2);
+    d.addValue(4, 2, "victims", 15);
+
+    Map<String, String> evaluation = d.evaluate();
+    assertNull(evaluation.get("rank(major_disaster, 2, 1)"));
+    assertEquals(IN, evaluation.get("rank(severity, 1, 2)"));
+    assertEquals(IN, evaluation.get(buildClaim(1)));
+    assertEquals(OUT, evaluation.get(buildClaim(2)));
+  }
+
+  @Test
   public void testWaitingStillWinsOverMajorDisaster() {
     // 1 waited more (waiting 2 vs 0): only a critical emergency gets ahead of it
     d.addContender(1);

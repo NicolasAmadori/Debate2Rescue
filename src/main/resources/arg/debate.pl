@@ -45,7 +45,7 @@ spreading(E) : val(E, trapped, 1), val(E, escalating, 1) -> situation(spreading,
 catastrophic(E) : val(E, collateral_risk, 1), val(E, size, S), prolog(S >= 2) -> situation(catastrophic, E).
 
 % large-scale disaster with many victims
-major_disaster(E) : val(E, size, S), val(E, victims, V), prolog(S >= 2), prolog(V >= 3) -> situation(major_disaster, E).
+major_disaster(E) : val(E, size, S), val(E, victims, V), prolog(S >= 3), prolog(V >= 8) -> situation(major_disaster, E).
 
 % an emergency in a situation should not be put on top of another in the same situation
 in_situation(S, E1, E2) : situation(S, E1), prolog(contender(E2)), prolog(E1 \== E2), ~(situation(S, E2)) => ahead(S, E1, E2).
