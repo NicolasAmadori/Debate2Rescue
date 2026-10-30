@@ -3,37 +3,36 @@
 \subsection{Abstract and Structured Argumentation}
 
 Formal argumentation largely builds on the \emph{abstract argumentation frameworks} of \citet{dung1995}, where arguments have no internal structure and a framework is a set of arguments with a binary attack relation.
-A \emph{semantics} then decides which arguments can be accepted.
-The grounded one, which we use to evaluate our debates, captures a sceptical reasoner and always yields a single extension, built from the unattacked arguments by repeatedly adding the ones they defend.
+%TODO: is it clearly explained?
+A grounded \emph{semantics}, which we use to evaluate our debates, captures a skeptical reasoner and always yields a single extension, built from the unattacked arguments by repeatedly adding the ones they defend.
 
-Abstract frameworks do not say how arguments are built or why they attack each other.
-\emph{Structured} argumentation fills this gap by building arguments from strict and defeasible rules, so that attacks follow from their structure.
+While abstract frameworks do not say how arguments are built or why they attack each other, \emph{structured} argumentation fills this gap by building arguments from strict and defeasible rules, so that attacks follow from their structure.
 An argument can contradict the conclusion of another one (rebutting), one of its premises (undermining), or deny that one of its defeasible rules applies (undercutting)~\citep{modgil2014aspic}.
 Our debates rely on rebuttals and undercutters, while undermining plays no role.
 
 Arg2P~\citep{calegari2022arg2p} is an ASPIC+-like system built on top of 2P-Kt.
-Rules are written in a Prolog-like syntax and preferences between them are stated through a superiority relation.
+Rules are written in an enriched Prolog syntax and preferences between them are stated through a superiority relation.
 The resulting graph is evaluated with a labelling semantics, which marks each argument as accepted (\texttt{IN}), rejected (\texttt{OUT}) or undecided (\texttt{UND}).
 Its authors present it as a lightweight library, meant to be embedded in a larger system and called only where reasoning is needed.
-Since it is built on logic programming, its conclusions can be traced back to readable rules, which the authors see as a way to meet explainability requirements.
+Since it is built on logic programming, its conclusions can be traced back to readable rules, increasing explainability.
+In our project, Arg2P is used by the orchestrator to evaluate the ongoing debate, and by the rescuers to pick their moves.
 
-\citet{pisano2021preferences} make preferences \emph{defeasible} in Arg2P, so that they are themselves conclusions of arguments and can be attacked.
-In this project, preferences are fixed, and the exceptions that depend on the context are modelled as undercutters rather than as arguments about preferences.
+\citet{pisano2021preferences} make preferences \emph{defeasible} in Arg2P, so that they are themselves conclusions of arguments and can be attacked, meanwhile in this project preferences are fixed, and the exceptions that depend on the context are modelled as undercutters rather than as arguments about preferences.
 
 \subsection{Argumentation in Multi-Agent Systems}
 
+% TODO: check these unused citations: pisano2023coop and prakken2006
 \citet{calegari2022arg2p} observe that the abstract argumentation perspective tends to see argumentation as a one-sided process in which a single party justifies a claim, while in practice it is usually an exchange between several contributors, as in multi-agent systems.
 \citet{rahwan2003} survey \emph{argumentation-based negotiation}, where agents with conflicting interests, typically competing for scarce resources, exchange arguments that justify their stance or try to influence the others.
-They contrast it with game-theoretic and heuristic approaches, in most of which agents can only exchange proposals and accept or reject them.
-Their conceptual framework fits our design, with custom performatives as the communication language, the orchestrator's turn-taking as the protocol and the agents' beliefs as information stores.
+They contrast it with heuristic approaches, in most of which agents can only exchange proposals and accept or reject them.
+Their conceptual framework fits our design, with custom performatives as the communication language, the orchestrator's turn-taking as the protocol, and the agents' beliefs as information stores.
 Among the open problems, the survey asks whether a mediator should merely assist the negotiators or be able to enforce its will.
 Our orchestrator operates as an in-between, as it runs the turns and hands out the resource, but the winner follows from the shared rules and the other rescuers' withdrawals.
 
 \subsection{BDI Agents and Jason}
 
-The belief-desire-intention (BDI) model describes an agent through what it believes about the world, the goals it wants to achieve and the plans it commits to.
-\citet{bordini2007} present Jason, an interpreter for an extended version of AgentSpeak.
+The belief-desire-intention (BDI) model describes an agent through what it believes about the world, the goals it wants to achieve, and the plans it commits to.
+In this project we use Jason~\citet{bordini2007}, an interpreter for an extended version of AgentSpeak.
 Jason agents react to changes in their beliefs and goals by selecting plans from a plan library, and communicate through speech-act messages whose performatives, such as \texttt{tell} or \texttt{achieve}, define the effect on the receiver.
 This effect is itself defined by AgentSpeak plans, which can be overridden to handle new performatives.
-The language can also be extended with internal actions, Java classes that can be called from plans and rules, where they behave like predicates.
-They are our bridge to Arg2P, which the orchestrator queries to evaluate the debate and the rescuers to pick their moves.
+The language can also be extended with internal actions, Java classes that can be called from plans and rules, where they behave like predicates, serving as our bridge to Arg2P and to the environment.

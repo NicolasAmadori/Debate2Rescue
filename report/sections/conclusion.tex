@@ -4,18 +4,18 @@ This project has been challenging because it made us think of the system as a gr
 A large part of the effort went into Arg2P, a tool none of us knew, since the course did not cover it.
 Its syntax is compact, but it took us time to understand how rules and preferences interact under the grounded labelling, and to write a theory whose labels say something about the domain.
 
-The theory in \cref{subsec:impl_theory} went through several versions, becoming more and more Arg2P centered.
+The theory in \cref{subsec:impl_theory} went through several versions, becoming more and more Arg2P-centered.
 The first one had only claims, so the oldest emergency always won.
 In the second, a rescuer could object to another claim by naming a reason, and a single Prolog predicate decided whether the objection counted, checking that the reason put the rescuer ahead and that it was stronger than the reason it answered.
 Arg2P only propagated the outcome, and the rescuers kept their own copy of the order of the reasons to pick their moves.
 Now Prolog only tells which of two values is better for the same reason.
 The strength of the reasons became a preference between rankings, so Arg2P is the one that weighs a reason against another, and the rescuers ask it which move would help them through \texttt{arg.choose}.
 Then, we enriched the debates with exceptions.
-A new reason needs its strength, the values that count and how two values compare, while an exception is a single rule that undercuts a ranking, and we added size, collateral risk and the exceptions of \cref{tab:impl_exceptions} this way.
+A new reason needs its strength, the values that count, and how two values compare, while an exception is a single rule that undercuts a ranking, and we added size, collateral risk, and the exceptions of \cref{tab:impl_exceptions} this way.
 
 Overall, we are satisfied with our work and how debates are handled.
 The winner comes out of the labelling computed by Arg2P, and the orchestrator falls back to the oldest emergency only when no claim is accepted.
-Responsibilities are divided between the orchestrator, who gives the turns and assigns the pilot, and each rescuer, who decides on its own which value to reveal.
+Responsibilities are divided between the orchestrator, which coordinates the turns and assigns the pilot, and each rescuer, which decides on its own which value to reveal.
 The orchestrator only sees where the emergencies are and each rescuer only sees its own, so both learn the values of the others from the moves.
 
 \subsection{Future Work}\label{subsec:future_work}

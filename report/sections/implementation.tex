@@ -5,14 +5,24 @@ Debate2Rescue is a Gradle project in Java 21 built on the Jason interpreter (3.2
 \subsection{Environment and Model}\label{subsec:impl_environment}
 
 \texttt{EmergencyEnvironment} creates the rescuers and pilots at runtime, in the number chosen in the configuration dialog (\cref{subsec:initial_config}), and runs the simulation loop that spawns emergencies on the grid, an extension of Jason's \texttt{GridWorldModel}.
-Emergency ids come from a counter, so a lower id always means an older emergency, and both the orchestrator and the theory use this to break ties.
-The orchestrator perceives every responder and emergency, while a rescuer learns the attributes of its emergency only once it stands on it, such as its severity on the Emergency Severity Index (ESI, from 1 for the most severe to 5), the number of victims or its size.
+Emergency IDs come from an incremental counter, so a lower ID always means an older emergency, and both the orchestrator and the theory use this to break ties.
+
+In the simulation model, an incident is represented by an immutable \texttt{Emergency} record containing the full set of emergency information:
+\begin{itemize}
+    \item \textbf{Identity and location:} A unique integer \texttt{id} and its grid coordinates \texttt{position} $(x, y)$.
+    \item \textbf{Type:} An \texttt{EmergencyType} enum describing the nature of the incident (e.g., \texttt{FIRE}, \texttt{MEDICAL}, \texttt{HAZMAT}, \texttt{BOMB}, \texttt{AGGRESSION}, \texttt{EVACUATION}, \texttt{ARMED\_PERSON}, \texttt{DISASTER}, or \texttt{MISSING}), each uniquely mapped to a specialized vehicle or unit type (such as fire trucks, ambulances, or helicopters).
+    \item \textbf{Severity:} An integer on the Emergency Severity Index (\texttt{Severity}, ESI 1 to 5), ranging from 1 for immediately life-threatening incidents to 5 for non-urgent cases.
+    \item \textbf{Victim count:} The number of affected persons requiring assistance (\texttt{victims}, from 0 to 15).
+    \item \textbf{Hazard conditions:} Boolean flags denoting whether individuals are trapped (\texttt{trapped}), whether the incident is worsening over time (\texttt{escalating}), and whether adjacent critical infrastructure is threatened (\texttt{collateralRisk}).
+    \item \textbf{Scale:} A physical magnitude (\texttt{size}) rated as small (1), medium (2), or large (3).
+    \item \textbf{Status:} An operational state (\texttt{EmergencyStatus}), which transitions from \texttt{WAITING} to \texttt{IN\_PROGRESS} when the assigned pilot intervenes, and finally to \texttt{RESOLVED} after completion.
+\end{itemize}
+
 Jason runs environment actions on several threads, so the model's methods on emergencies and responders are \texttt{synchronized}.
 
 \subsection{The Debate Theory}\label{subsec:impl_theory}
 
-The domain rules shared by all agents are in \texttt{debate.pl}.
-They never change during a run, and the Java side only appends facts to them, \texttt{contender(E)} for each emergency still claiming the resource and \texttt{val(E, Reason, Value)} for each revealed value.
+The domain rules shared by all agents are in \texttt{arg/debate.pl}, they never change during a run and the Java side only appends facts to them: \texttt{contender(E)} for each emergency still claiming the resource and \texttt{val(E, Reason, Value)} for each revealed value.
 \Cref{fig:impl_theory} shows the core rules, without the helper predicates, the situations and the exceptions, which are summarised in \cref{tab:impl_exceptions}.
 
 \begin{figure}[htbp]
@@ -48,13 +58,13 @@ An emergency gets ahead of another on a reason through \texttt{challenge} or \te
 A revealed value that counts as a reason, according to the helper \texttt{worth}, challenges every other contender at once.
 The challenged one undercuts it by revealing its own value for the same reason, and from then on \texttt{compare} decides between the two values.
 Being ahead turns into a ranking, and opposite rankings rebut each other, with the stronger reason prevailing.
-Waiting is the strongest reason, followed by severity, collateral risk, trapped victims, escalation, size and victims, and putting it on top is how the fairness requirement (\cref{subsec:non_functional_requirements}) is satisfied by the theory.
-An emergency with someone ranked over it loses its claim, and the arguments that used that claim to exclude younger contenders fall with it, which lets a younger emergency win.
+As defined in \cref{subsec:detailed_design}, waiting is the strongest reason, followed by severity, collateral risk, trapped victims, escalation, size, and victims; placing waiting on top satisfies the fairness requirement (\cref{subsec:non_functional_requirements}).
+An emergency with someone ranked over it loses its claim, and the arguments that used that claim to exclude younger contenders fall with it, which lets a younger emergency win. %TODO: check!
 
-The exceptions in \cref{tab:impl_exceptions} protect an emergency in a particular situation by undercutting a ranking against it.
-They hold only while the penalised emergency is not critical, so they fall as soon as it reveals a severity of ESI 1 or 2.
-\texttt{disaster\_scale} also falls when the penalised emergency is a major disaster itself.
-
+The exceptions in \cref{tab:impl_exceptions} protect an emergency in a particular situation by undercutting a ranking against it. %TODO: to change with the new impl
+They hold only while the penalized emergency is not critical, so they fall as soon as it reveals a severity of ESI 1 or 2.
+\texttt{disaster\_scale} also falls when the penalized emergency is a major disaster itself.
+%TODO: to change with the new impl
 \begin{table}[htbp]
 \centering
 \small
@@ -72,31 +82,47 @@ They hold only while the penalised emergency is not critical, so they fall as so
 \label{tab:impl_exceptions}
 \end{table}
 
-In the debate logged in \cref{fig:sample_debate_log}, emergency 10 takes the lead with a challenge on severity and loses it when 7 answers with the same ESI, since equal values leave the older claim ahead.
+In the debate logged in \cref{fig:sample_debate_log}, emergency 10 takes the lead with a challenge on severity and loses it when 7 answers with the same ESI, since equal values leave the older claim ahead. %TODO: to change with the new impl
 On size, 7 answers with a larger value, and 10, with nothing left that helps, concedes.
 
 \subsection{Internal Actions}\label{subsec:impl_internal_actions}
 
-The class \texttt{Debate} appends the facts to the rules and evaluates the theory with Arg2P under the grounded labelling.
-The orchestrator calls \texttt{arg.deliberate(Moves, Labels)}, which turns the moves of a debate into facts and returns the labels of the rules as a Jason list.
-Challenges and answers both become values, since for the theory they differ only in who reveals what.
+\subsubsection{Argumentation Actions}\label{subsubsec:impl_arg_actions}
 
-The rescuers call \texttt{arg.choose(Moves, Me, Other, Candidates, Chosen)}.
-It rebuilds the debate with only the two emergencies involved, adds each candidate as a hypothetical move and returns the first one that improves the position of \texttt{Me} against \texttt{Other}, measured on the rankings that are IN.
-Some protected situations need two values, as spreading needs both trapped victims and escalation, so when no single candidate helps the action tries pairs, starting from those that can complete a situation and so trigger its exception, and returns the first value of the first pair that does.
-If nothing helps, it fails.
+The argumentation reasoning is integrated into Jason via two custom internal actions extending \texttt{DefaultInternalAction}, which interface agents with Arg2P through the helper class \texttt{Debate}:
+\begin{itemize}
+    \item \texttt{arg.deliberate(Moves, Labels)}: Executed by the orchestrator. It maps the dialogue move history into Prolog facts, evaluates the theory with Arg2P under grounded semantics, and returns the resulting argument labels to identify contenders and manage turn rotation.
+    \item \texttt{arg.choose(Moves, Me, Other, Candidates, Chosen)}: Executed by competing rescuers on their turn. It simulates candidate dialogue moves against an opponent in a pairwise sub-debate and unifies \texttt{Chosen} with the first move that strictly improves the agent's standing. It evaluates single moves first, then candidate pairs for composite exceptions, failing if no candidate improves its position.
+\end{itemize}
 
+\subsubsection{Environment Actions}\label{subsubsec:impl_env_actions}
+
+Custom environment actions declared in \texttt{EmergencyEnvironment} are dispatched by \texttt{executeAction} to manipulate \texttt{SimModel}, coordinate agent lifecycles, and synchronize telemetry with the GUI:
+\begin{itemize}
+    \item \texttt{join\_as\_rescuer}: Registers a newly spawned rescuer agent at an available base station.
+    \item \texttt{join\_as\_pilot}: Registers a newly spawned pilot agent with its specialized resource type at a base station.
+    \item \texttt{move\_towards(X, Y)}: Advances the agent one step towards grid coordinates $(X, Y)$, respecting simulation speed and obstacles.
+    \item \texttt{wait\_steps(N)}: Pauses agent execution for $N$ simulation steps.
+    \item \texttt{assign(Rescuer, EmergencyId)}: Sets the emergency status to \texttt{ASSIGNED} in the model upon rescuer allocation.
+    \item \texttt{start\_rescue(EmergencyId)}: Transitions the emergency status to \texttt{IN\_PROGRESS} when the rescuer reaches the incident.
+    \item \texttt{resolve\_emergency(EmergencyId)}: Marks the incident as resolved, removes it from \texttt{SimModel}, and notifies agents of the environment update.
+    \item \texttt{log(Message)}: Emits agent log messages to both the console and the GUI log panel.
+    \item \texttt{log\_debate\_start}, \texttt{log\_debate\_move}, \texttt{log\_debate\_status}, \texttt{log\_debate\_end}: Record debate lifecycle events, dialogue moves, provisional rankings, and final resolutions to persist logs via \texttt{DebateLogger} and update the GUI debate arena.
+\end{itemize}
 \subsection{Agents}\label{subsec:impl_agents}
 
 Requests for the same resource type are buffered by the orchestrator in a window of five steps, run as a separate intention with \texttt{!!} so that it keeps reacting while the window is open.
 When it closes, the orchestrator grants the requests directly if enough pilots of the type are free, and opens a debate if only some are.
-Before each turn it evaluates the debate with \texttt{arg.deliberate}, and the turn rotates among the contenders whose claim is not IN, each receiving the goal \texttt{your\_turn(RT, Target)} with an opponent to target.
-Rescuers reply with the custom performatives \texttt{challenge}, \texttt{answer} and \texttt{concede}, handled through plans for Jason's \texttt{kqml\_received} goal that accept a move only from the rescuer holding the turn.
-Every move is relayed to all contenders, so each rescuer keeps the same copy of the debate as the orchestrator.
-When nobody is left to give the turn to, the winner gets the closest free pilot, which travels to the emergency and resolves it, while the losers are told \texttt{denied} and keep their requests pending, to be deliberated again as soon as a pilot of that type is free.
-
 A rescuer maps its emergency onto the seven reasons of the theory, using the number of debates it has lost as its value for waiting.
 On its turn it runs the plan in \Cref{fig:impl_rescuer_turn}, where \texttt{requesting} holds its request and \texttt{moves} its copy of the debate.
+
+Before each turn it evaluates the debate with \texttt{arg.deliberate}, and the turn rotates among the contenders whose claim is not IN, each receiving the goal \texttt{your\_turn(RT, Target)} with an opponent to target.
+Rescuers reply with the custom performatives \texttt{challenge}, \texttt{answer}, and \texttt{concede}, handled through plans for Jason's \texttt{kqml\_received} goal that accept a move only from the rescuer holding the turn.
+Every move is relayed to all contenders, so each rescuer keeps the same copy of the debate as the orchestrator.
+When nobody is left to give the turn to, the winner gets the closest free pilot, which travels to the emergency and resolves it, while the losers are told \texttt{denied} so that they can request again the resource to the orchestrator.
+
+
+
 
 \begin{figure}[htbp]
 \centering
@@ -123,9 +149,38 @@ On its turn it runs the plan in \Cref{fig:impl_rescuer_turn}, where \texttt{requ
 The rescuer first tries to answer a challenge it has not answered yet, offering its value for that reason and then its other unrevealed values, since a different value can trigger an exception.
 Otherwise it challenges its target with its unrevealed values from the strongest reason down, and if nothing helps it concedes.
 
+\subsection{Dynamic Number of Agents}
+\label{subsec:dynamic_agents}
+
+To support arbitrary configurations without manual configuration editing, the project separates agent instantiation from the static project file: only the orchestrator agent is statically declared, while rescuer and pilot agents are spawned dynamically at runtime during environment startup based on the configuration chosen by the user.
+
+To ensure scenario validity and operational balance, spatial entities scale with grid dimension $M$ (as detailed in \cref{subsec:initial_config}), while agent populations are bounded relative to station count $S$:
+\begin{itemize}
+    \item \textbf{Rescuers:} Bounded such that $S \le \mathrm{rescuers} \le 4 \times S$. This guarantees that every base station has at least one initial rescuer, with a maximum of four rescuers per station.
+    \item \textbf{Pilots:} Bounded such that $\max(S, 9) \le \mathrm{pilots} \le 4 \times S$. The lower bound of 9 guarantees that each of the nine specialized resource types (fire truck, ambulance, police car, hazmat team, bomb squad, army, excavator, police helicopter, helicopter) has at least one pilot available in the simulation.
+\end{itemize}
+
+Because dynamic agents are created after the orchestrator has started, they register through a standardized startup handshake protocol:
+\begin{enumerate}
+    \item Upon instantiation, the agent executes its initial goal \texttt{!start}.
+    \item The agent calls an environment action (\texttt{join\_as\_rescuer} or \texttt{join\_as\_pilot}), which places the agent entity at an available base station in the grid model.
+    \item The agent sends an informative message to the orchestrator:
+    \begin{center}
+    \texttt{.send(orchestrator, tell, free(rescuer))}
+    \end{center}
+    for rescuers, or:
+    \begin{center}
+    \texttt{.send(orchestrator, tell, free(pilot))}
+    \end{center}
+    for pilots.
+    \item The orchestrator handles these messages dynamically, registering available rescuers (\texttt{+availableRescuer(R)}) or pilots (\texttt{+availableResource(RT, P)}) into its belief base.
+\end{enumerate}
+
+This mechanism allows the system to scale to different population sizes without altering agent source code or restarting the multi-agent infrastructure.
+
 \subsection{Logging and Testing}\label{subsec:impl_view}
 
 The orchestrator logs every debate through environment actions that forward the events to \texttt{DebateLogger}, which writes one file per debate (\cref{subsec:persistent_logs}) and updates the side panel.
 With each status update the orchestrator logs the rank and exception rules that are IN, and the logger uses the final list as the justification of the debate or, if it is empty because the others conceded, the last reason seen during the debate.
 
-JUnit tests cover the theory rule by rule, the move choice of \texttt{arg.choose}, the environment and the model, and a GitHub Actions workflow runs them, together with a Spotless formatting check, on every pull request towards \texttt{main} and \texttt{develop}.
+JUnit tests cover the theory rule by rule, the move choice of \texttt{arg.choose}, the environment and the model, and a GitHub Actions workflow runs them, together with a Spotless formatting check, on every pull request toward \texttt{main} and \texttt{develop}.

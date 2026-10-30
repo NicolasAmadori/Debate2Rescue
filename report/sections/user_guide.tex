@@ -1,12 +1,11 @@
 \section{User Guide}
 \label{sec:user_guide}
 
-This section describes how to configure, run, and monitor the \textsc{Debate2Rescue} simulation. It details system requirements, startup configuration, the graphical user interface (GUI), runtime controls, and debate log files.
+This section describes how to configure, run, and monitor the Debate2Rescue simulation.
+It details system requirements, startup configuration, the graphical user interface (GUI), runtime controls, and debate log files.
 
-% -----------------------------------------------------------------------------
 \subsection{Getting Started}
 \label{subsec:getting_started}
-% -----------------------------------------------------------------------------
 
 \subsubsection{Prerequisites}
 The simulation requires:
@@ -28,10 +27,8 @@ gradlew.bat run
 
 On startup, a configuration dialog opens before initializing the agents and grid environment.
 
-% -----------------------------------------------------------------------------
 \subsection{Initial Configuration}
 \label{subsec:initial_config}
-% -----------------------------------------------------------------------------
 
 The startup dialog (\texttt{SimConfigDialog}, \Cref{fig:config_dialog}) allows configuring the grid dimensions and agent population.
 
@@ -51,11 +48,12 @@ The configurable parameters and ranges are summarized in \Cref{tab:initial_confi
 \hline  
 \textbf{Parameter} & \textbf{Default} & \textbf{Range} & \textbf{Description} \\
 \hline
+
 \textbf{Columns} & 20 & 10 -- 50 & Grid width. \\
 \textbf{Rows} & 20 & 10 -- 50 & Grid height. \\
 \textbf{Stations} & 2 & 1 -- MaxStations & Number of base stations. \\
 \textbf{Obstacles} & 5 & 0 -- MaxObstacles & Number of obstacle cells. \\
-\textbf{Rescuers} & 2 & 1 -- MaxRescuers & Number of rescuer agents. \\
+\textbf{Rescuers} & 2 & MinRescuers -- MaxRescuers & Number of rescuer agents. \\
 \textbf{Pilots} & 9 & MinPilots -- MaxPilots & Number of resource pilots. \\
 \hline
 \end{tabular}
@@ -64,18 +62,16 @@ The configurable parameters and ranges are summarized in \Cref{tab:initial_confi
 \end{table}
 
 \subsubsection{Validation Rules and Default Values}
-The dialog enforces several constraints based on the average grid dimension $M$ based on the grid width and height:
+The dialog enforces several constraints based on the average grid dimension $M = (\mathrm{Columns} + \mathrm{Rows}) / 2$:
 \begin{itemize}
     \item \textbf{Base stations:} Defaults to $\mathrm{round}(0.10 \times M)$ with an upper limit of $\mathrm{round}(0.50 \times M)$.
     \item \textbf{Obstacles:} Defaults to $\mathrm{round}(0.25 \times M)$ with an upper limit of $\mathrm{round}(1.00 \times M)$.
     \item \textbf{Rescuers:} At least one rescuer per station, up to a maximum of four per station ($\mathrm{stations} \le \mathrm{rescuers} \le 4 \times \mathrm{stations}$). The default assigns one rescuer per station.
-    \item \textbf{Pilots:} Bounded between $\max(\mathrm{stations}, 9)$ and $4 \times \mathrm{stations}$, ensuring that every station has at least one pilot and that each of the nine resource types (helicopter, fire truck, ambulance, police car, excavator, police helicopter, army, bomb squad, hazmat team) has an assigned pilot.
+    \item \textbf{Pilots:} Bounded between $\max(\mathrm{stations}, 9)$ and $4 \times \mathrm{stations}$, ensuring that every station has at least one pilot and that each of the nine resource types has an assigned pilot.
 \end{itemize}
 
-% -----------------------------------------------------------------------------
 \subsection{Graphical User Interface}
 \label{subsec:gui_overview}
-% -----------------------------------------------------------------------------
 
 After configuration, the main application window is displayed (\Cref{fig:main_gui}). It is divided into two sections:
 \begin{enumerate}
@@ -86,7 +82,7 @@ After configuration, the main application window is displayed (\Cref{fig:main_gu
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.95\textwidth]{figures/main_gui.png}
-    \caption{The main graphical user interface of \textsc{Debate2Rescue}.}
+    \caption{The main graphical user interface of Debate2Rescue.}
     \label{fig:main_gui}
 \end{figure}
 
@@ -103,10 +99,8 @@ A visual legend at the bottom-left of the side panel maps each icon and color to
 \subsubsection{Cell Tooltips}
 Hovering the cursor over any station or emergency cell displays a tooltip with details such as emergency status, severity level (and ESI score), victim count, station presence, and any responders currently on the cell.
 
-% -----------------------------------------------------------------------------
 \subsection{Runtime Simulation Controls}
 \label{subsec:runtime_config}
-% -----------------------------------------------------------------------------
 
 Three sliders at the top of the side panel allow adjusting simulation parameters dynamically during execution (\Cref{fig:sliders}):
 \begin{itemize}
@@ -122,10 +116,8 @@ Three sliders at the top of the side panel allow adjusting simulation parameters
     \label{fig:sliders}
 \end{figure}
 
-% -----------------------------------------------------------------------------
 \subsection{Real-Time Logging}
 \label{subsec:gui_logging}
-% -----------------------------------------------------------------------------
 
 The side panel features two vertically split logging panes: the upper pane logs general simulation events, while the lower pane streams debate transcripts.
 
@@ -165,19 +157,17 @@ The Debate Arena contains:
     \item \textbf{Header:} Summarizes the contested resource and contender emergency profiles (severity, victim count, trapped victims, escalation status).
     \item \textbf{Dialogue turns:} Color-coded by performative:
     \begin{itemize}
-        \item \textbf{\textcolor{blue}{CLAIM:}} Resource request by an agent.
-        \item \textbf{\textcolor{orange}{CHALLENGE:}} Attack on an opponent's priority based on criteria such as severity or victim count.
-        \item \textbf{\textcolor{violet}{ANSWER:}} Response or counter-argument defending an emergency.
-        \item \textbf{\textcolor{red}{CONCEDE:}} Concession withdrawing a claim when an opponent's argument dominates.
+        \item \textbf{CLAIM:} Resource request by an agent.
+        \item \textbf{CHALLENGE:} Attack on an opponent's priority based on criteria such as severity or victim count.
+        \item \textbf{ANSWER:} Response or counter-argument defending an emergency.
+        \item \textbf{CONCEDE:} Concession withdrawing a claim when an opponent's argument dominates.
     \end{itemize}
     \item \textbf{Turn status:} Updates after each move to display the current leader and the applied ranking rule.
     \item \textbf{Debate summary:} Concluding banner showing the winning emergency, the assigned rescuer, the final justification, and any conceded contenders.
 \end{itemize}
 
-% -----------------------------------------------------------------------------
 \subsection{Persistent File Logs}
 \label{subsec:persistent_logs}
-% -----------------------------------------------------------------------------
 
 Each debate session is saved to disk for inspection and offline analysis.
 
@@ -202,6 +192,7 @@ Each log file contains three parts:
 
 A sample debate log is shown in \Cref{fig:sample_debate_log}.
 
+%TODO: to change with the new impl
 \begin{figure}[htbp]
 \centering
 \begin{minipage}{0.95\textwidth}

@@ -1,0 +1,51 @@
+sequenceDiagram
+    autonumber
+    participant R1 as Rescuer 1 (E1)
+    participant O as Orchestrator
+    participant R2 as Rescuer 2 (E2)
+    participant P as Pilot
+
+    Note over R1, R2: --- Request Window ---
+    R1->>O: tell: request(E1, RT)
+    R2->>O: tell: request(E2, RT)
+    Note over O: Request collection window closes<br/>Available units < Requests (Contention detected)
+
+    Note over R1, R2: --- Debate Initialization (argue) ---
+    Note over O: Debate order initialized: [c(E1, R1), c(E2, R2)]
+    O->>R1: argue: move(RT, 1, E1, claim)
+    O->>R2: argue: move(RT, 1, E1, claim)
+    O->>R1: argue: move(RT, 2, E2, claim)
+    O->>R2: argue: move(RT, 2, E2, claim)
+    Note over O: arg.deliberate(Moves, Labels)<br/>Determine non-accepted claim & target
+
+    Note over R1, R2: --- Argumentation Turn (challenge) ---
+    O->>R2: achieve: your_turn(RT, E1)
+    Note over R2: arg.choose evaluates candidates<br/>Selects attack move
+    R2->>O: challenge: challenge(RT, E1, Reason, Value)
+    Note over O: Record move and broadcast to contenders
+    O->>R1: challenge: move(RT, 3, E2, challenge(E1, Reason, Value))
+    O->>R2: challenge: move(RT, 3, E2, challenge(E1, Reason, Value))
+    Note over O: Rotate turn queue & arg.deliberate
+
+    Note over R1, R2: --- Defense (answer) ---
+    O->>R1: achieve: your_turn(RT, E2)
+    Note over R1: Detects unanswered challenge<br/>arg.choose finds counter or exception undercut
+    R1->>O: answer: answer(RT, 3, DefReason, DefValue)
+    Note over O: Record move and broadcast to contenders
+    O->>R1: answer: move(RT, 4, E1, answer(3, DefReason, DefValue))
+    O->>R2: answer: move(RT, 4, E1, answer(3, DefReason, DefValue))
+    Note over O: Rotate turn queue & arg.deliberate
+
+    Note over R1, R2: --- Concession (concede) ---
+    O->>R2: achieve: your_turn(RT, E1)
+    Note over R2: arg.choose fails (no improving move)
+    R2->>O: concede: concede(RT)
+    Note over O: Retract claim(E2) & remove R2 from debate queue
+    O->>R1: concede: move(RT, 5, E2, concede)
+    O->>R2: tell: denied(E2, RT)
+    Note over R2: denials(E2, N + 1) for next debate
+
+    Note over R1, P: --- Conclusion ---
+    Note over O: Grounded semantics: claim(E1) is IN (Winner)
+    O->>R1: tell: granted(E1, RT)
+    O->>P: achieve: move_to_emergency(E1, X, Y)

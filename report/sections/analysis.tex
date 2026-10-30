@@ -3,54 +3,51 @@
 \subsection{Problem Domain and Motivation}
 \label{subsec:problem_domain}
 
-Urban disaster response requires managing dynamic emergencies across a 2D grid containing obstacles, base stations, and mobile responders. The primary challenge is \emph{resource contention}: while field rescuers perform initial on-site triage, resolving incidents requires scarce specialized units (such as fire trucks, ambulances, or hazmat teams) that competing emergencies must share.
+Urban disaster response requires managing dynamic emergencies across a 2D grid containing obstacles, base stations, and mobile responders.
+The primary engineering challenge is \emph{resource contention}: while field rescuers perform initial on-site triage, resolving incidents requires scarce specialized units (such as fire trucks, ambulances, or helicopters) that competing emergencies must share.
 
-Standard allocation strategies like First-Come-First-Served or static scoring either ignore urgency or rely on opaque numerical formulas. Instead, \textsc{Debate2Rescue} models allocation as an argumentation process. Rescuers evaluate different conditions, including severity, victim counts, trapped individuals, and deliberate using \textsf{Arg2P}. Formal domain rules and exceptions resolve conflicts under grounded semantics, assigning the contested resource to the most justified claim.
+Standard allocation strategies like First-Come-First-Served or static scoring either ignore urgency or rely on opaque numerical formulas. Instead, Debate2Rescue models allocation as an argumentation process.
+Rescuers evaluate local incident conditions (such as severity, victim count, or trapped individuals) and deliberate using Arg2P.
+Formal domain rules and exceptions resolve conflicts under grounded semantics, assigning the contested resource to the most justified claim.
 
-% -----------------------------------------------------------------------------
 \subsection{System Roles and Responsibilities}
 \label{subsec:system_roles}
-% -----------------------------------------------------------------------------
 
 The system identifies four primary roles, each associated with specific duties:
 
 \begin{enumerate}
-    \item \textbf{Orchestrator Agent:} Coordinates the overall response. Its duties include dispatching available rescuers to newly detected incidents, collecting incoming resource requests, moderating argumentative debates when resources are contested, and granting units to the winning emergency.
+    \item \textbf{Orchestrator Agent:} Coordinates the overall response, dispatching available rescuers to newly detected incidents, collecting incoming resource requests, moderating argumentative debates when resources are contested, and granting units to the winning emergency.
 
-    \item \textbf{Rescuer Agent:} Acts as an on-site first responder. Its duties include traveling to the incident scene, assessing local conditions (such as urgency, victims, and potential hazards), requesting the required specialized equipment, and defending the emergency's claim during resource debates.
+    \item \textbf{Rescuer Agent:} Acts as an on-site first responder, traveling to the incident scene, assessing local conditions, requesting the required specialized equipment, and defending the emergency's claim during resource debates.
 
-    \item \textbf{Pilot Agent:} Operates specialized vehicles and equipment (such as fire trucks, ambulances, or hazmat units). Its duties include deploying to an incident when assigned, executing the physical rescue operation until the emergency is resolved, and returning to base.
+    \item \textbf{Pilot Agent:} Operates specialized vehicles and equipment, deploying to an incident when assigned, executing the physical rescue operation until the emergency is resolved, and returning to base.
 
-    \item \textbf{Simulation Operator (User):} The human supervisor who oversees the simulation. The operator's duties include configuring the initial environment, adjusting simulation parameters at runtime, and monitoring agent behavior and debate outcomes.
+    \item \textbf{Simulation Operator (User):} The human supervisor who oversees the simulation, can configure the initial environment, adjust simulation parameters at runtime, and monitor agent behavior and debate outcomes.
 \end{enumerate}
 
-% -----------------------------------------------------------------------------
 \subsection{Functional Requirements}
 \label{subsec:functional_requirements}
-% -----------------------------------------------------------------------------
 
 The functional requirements describe the core features and operations that the system must support:
 
 \begin{itemize}
-    \item \textbf{Environment Simulation:} The system simulates a 2D grid world containing obstacles, stations, and emergencies across all the categories, each initialized with its information.
+    \item \textbf{Environment Simulation:} The system simulates a 2D grid world containing obstacles, stations, and emergencies with different categories and different attributes. The simulation spawns new emergencies based on user-defined parameters.
     
     \item \textbf{Emergency Dispatch:} The orchestrator automatically assigns the nearest available rescuer to new emergencies. The rescuer navigates to the incident cell, inspects local conditions to discover attributes, and requests the appropriate specialized resource.
     
     \item \textbf{Request Window:} When resource requests arrive, the orchestrator collects them within a short time window. If the number of competing requests exceeds available units, a debate is opened; if units are sufficient, they are granted directly.
     
-    \item \textbf{Argumentation-Based Deliberation:} Contending rescuers participate in a turn-based dialogue using custom performatives. Moves are evaluated via \textsf{Arg2P} using grounded semantics to determine the winning emergency based on explicit domain rules and exceptions.
+    \item \textbf{Argumentation-Based Deliberation:} Contending rescuers participate in a turn-based dialogue using custom performatives. Moves are evaluated via Arg2P using grounded semantics to determine the winning emergency based on explicit domain rules and exceptions.
     
-    \item \textbf{Rescue Execution and Agent Lifecycle:} The granted pilot travels to the incident and executes the rescue. Once resolved, the emergency is removed, and both responders return to base to become available again. Denied contenders retain their requests for subsequent allocation rounds.
+    \item \textbf{Rescue Execution and Agent Lifecycle:} The assigned pilot travels to the incident and executes the rescue. Once resolved, the emergency is removed, and both responders return to base to become available again. Denied contenders retain their requests for subsequent allocation rounds.
     
-    \item \textbf{GUI and Runtime Control:} The interface provides a live visual grid with tooltips and dynamic sliders allowing the operator to adjust simulation speed, spawn rate, and emergency limits during execution.
+    \item \textbf{GUI and Runtime Control:} The interface provides a live visual grid with tooltips and dynamic sliders that allow the operator to adjust simulation speed, spawn rate, and emergency limits during execution.
     
     \item \textbf{Audit Logging:} The system logs all simulation events in real time and automatically exports complete debate transcripts to disk, recording every move, intermediate status, and the final justification.
 \end{itemize}
 
-% -----------------------------------------------------------------------------
 \subsection{Non-Functional Requirements}
 \label{subsec:non_functional_requirements}
-% -----------------------------------------------------------------------------
 
 The non-functional requirements define the quality attributes and operational constraints of the application:
 
@@ -59,9 +56,9 @@ The non-functional requirements define the quality attributes and operational co
     
     \item \textbf{Fairness:} Lower-priority emergencies must not be starved indefinitely. Each denial increases an emergency's accumulated waiting weight, allowing older requests to eventually take precedence over higher-severity but newer incidents.
     
-    \item \textbf{Performance:} Deliberation through \textsf{Arg2P}, pathfinding, and visual updates must execute with minimal latency, ensuring a smooth simulation loop and a responsive user interface.
+    \item \textbf{Performance:} Deliberation through Arg2P, pathfinding, and visual updates must execute with minimal latency, ensuring a smooth simulation loop and a responsive user interface.
     
-    \item \textbf{Concurrency and System Integrity:} State changes---such as rescuer assignments and pilot grants---must be thread-safe and atomic to prevent race conditions across parallel agent threads.
+    \item \textbf{Concurrency:} State changes, such as rescuer assignments and resource grants, must be thread-safe and atomic to prevent race conditions across parallel agent threads.
     
     \item \textbf{Observability:} The interface must make system behavior easy to understand and follow.
     

@@ -37,7 +37,10 @@ bin/
 report/**
 !report/*.tex
 !report/*.bib
+!report/*.pdf
 !report/sections/
 !report/sections/*.tex
 !report/figures/
 !report/figures/*
+!report/charts/
+!report/charts/*.mmd

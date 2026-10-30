@@ -1,0 +1,52 @@
+flowchart TB
+    subgraph UI ["Observability & User Interface (Swing)"]
+        direction TB
+        View["Swing GUI (ViewImpl)<br/>• GridView (2D Map)<br/>• SidePanel (Controls & Sliders)<br/>• DebateArena (Live Debate Graph)"]
+        Logger["DebateLogger & Audit Log<br/>(Disk Transcripts)"]
+    end
+
+    subgraph ENV ["Simulation & Environment (Java)"]
+        direction TB
+        EE["EmergencyEnvironment<br/>• Action Execution<br/>• Percept Management<br/>• Dynamic Agent Spawning"]
+        Model["SimModel<br/>• 2D Grid & Stations<br/>• Emergencies & Responders"]
+        Spawner["Emergency Generator Thread"]
+        Spawner -->|Generates Incidents| Model
+        EE <-->|Updates / Queries State| Model
+    end
+
+    subgraph MAS ["MAS Infrastructure & Agents (Jason AgentSpeak)"]
+        direction TB
+        subgraph Agents ["BDI Agents"]
+            Orch["Orchestrator Agent<br/>• Incident Dispatcher<br/>• Turn-based Debate Manager"]
+            Resc["Rescuer Agents<br/>• On-Site Triage<br/>• Contenders (challenge, answer, concede)"]
+            Pilot["Pilot Agents<br/>• Specialized Resource Units<br/>• Mission Execution"]
+        end
+        BDI["Jason BDI Runtime<br/>• Intention Scheduler<br/>• Belief Base<br/>• Communication Channel (KQML)"]
+        Orch --- BDI
+        Resc --- BDI
+        Pilot --- BDI
+    end
+
+    subgraph ARG ["Argumentation Layer (Arg2P)"]
+        direction TB
+        IA["Jason Internal Actions<br/>• arg.deliberate<br/>• arg.choose"]
+        Bridge["Debate.java Bridge"]
+        Engine["Arg2P Solver (2P-Kt)<br/>• Argument Graph Builder<br/>• Grounded Semantics Evaluator"]
+        Theory["Prolog Theory (debate.pl)<br/>• Reason Priority Hierarchy<br/>• Exception Undercuts"]
+        IA --> Bridge
+        Bridge --> Engine
+        Engine --> Theory
+    end
+
+    %% Cross-layer interactions
+    View <-->|"User Controls & Speed / State Refresh"| EE
+    EE -->|"Audit Events & Debate Logs"| Logger
+    EE -->|"Real-time Grid & Event Stream"| View
+
+    EE -->|"Percepts (emergency, at, emergency_info)"| BDI
+    BDI -->|"Physical Actions (move_towards, start_rescue)"| EE
+    EE -.->|"Spawns Agents at Runtime (RuntimeServices)"| Agents
+
+    Orch <-->|"arg.deliberate(Moves, Labels)"| IA
+    Resc <-->|"arg.choose(Moves, Candidates, Move)"| IA
+

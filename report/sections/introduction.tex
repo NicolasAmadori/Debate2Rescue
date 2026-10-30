@@ -1,25 +1,20 @@
 \section{Introduction}
 
-When several emergencies break out in the same area, the teams handling them often need the same scarce resources, such as an ambulance or a helicopter, and someone has to decide who is served first and who waits.
+When several emergencies break out in the same area, the rescuers handling them sometimes need the same scarce resources, such as an ambulance or a helicopter, and someone has to decide who is served first and who waits.
 
-A simple way to make this decision is to reduce every request to a number, either a fixed priority score or a bid placed by each team, and to serve the highest one.
-It is fast, but the number alone does not show which aspect of the emergency produced it, and the teams who handle an exception cannot argue for it~\citep{rahwan2003}.
-Consider two medical emergencies that both want the only free ambulance.
-The first has already been turned down more times, while the second involves a critical patient and the first does not.
-A score that weighs waiting time heavily, as one would to keep requests from being starved, sends the ambulance to the first one, and the person in critical condition keeps waiting.
-The second team cannot argue that being critical matters more than having waited longer, and the system has no way to weigh such an argument against the others.
+A simple way to make this decision is to reduce every request to a number, like a fixed priority score based on the emergency data of each rescuer, and to serve the highest one.
+It is fast, but the number alone does not show which aspect of the emergency produced it, and the rescuers who handle an exception cannot argue for it~\citep{rahwan2003}. %TODO: why cite here?
+Consider two medical emergencies that both want the only free ambulance: the first has already been turned down more times, while the second involves a critical patient and the first does not.
+A score that weighs waiting time heavily, as one would to keep requests from being starved, sends the ambulance to the first one, meanwhile the person in critical condition keeps waiting and the second team cannot argue that being critical matters more than having waited longer, so the system has no way to weigh such an argument against the others.
 
-Debate2Rescue explores \emph{argumentation-based negotiation}~\citep{rahwan2003} as a way to make those decisions.
-Agents back their requests with reasons drawn from their emergency, such as its severity or how many times the request has already been denied.
-When several agents want the same resource they debate over multiple rounds, challenging each other on these reasons and withdrawing when nothing they can add would help.
+Debate2Rescue explores \emph{argumentation-based negotiation}~\citep{rahwan2003} as a way to make those decisions, asking agents to back their requests with reasons drawn from their emergency, such as its severity or how many times the request has already been denied.
+When several agents want the same resource, they debate over multiple rounds, challenging each other on these reasons and withdrawing when nothing they can add would help.
 A shared set of domain rules, evaluated after every move, decides which request currently prevails.
 In the example above, the rules give the ambulance to the second emergency even though it has waited less, and the arguments that won the debate explain the choice.
 
-The project is a multi-agent system that simulates an area where natural and human-caused emergencies arise.
-A rescuer agent is sent to each emergency and, once on site, requests the resource it needs, which a pilot agent then brings to the scene.
-A central orchestrator dispatches the rescuers and mediates resource conflicts.
-It starts a debate only when there are not enough units to satisfy every request.
+The project is a multi-agent system that simulates an area where natural and human-caused emergencies arise: a rescuer agent is sent to each emergency and, once on site, requests the resource it needs, which a pilot agent then brings to the scene.
+A central orchestrator dispatches the rescuers, mediates resource conflicts, and it starts a debate only when there are not enough units to satisfy every request.
 All agents are BDI agents written in Jason, and the debates are evaluated with the Arg2P argumentation framework.
 
-\Cref{sec:lit_rev} gives an overview of the works the project builds on, while \cref{sec:analysis}, \cref{sec:design} and \cref{sec:implementation} describe the system and how it was built.
-\Cref{sec:user_guide} explains how to run the project, and \Cref{sec:conclusion} explores possible future works.
+\Cref{sec:lit_rev} gives an overview of the literature the project builds on, while \cref{sec:analysis}, \cref{sec:design}, and \cref{sec:implementation} describe the system and how it was built.
+\Cref{sec:user_guide} explains how to run the project, and \cref{sec:conclusion} explores possible future work.
