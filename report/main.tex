@@ -44,7 +44,7 @@ Debate2Rescue is a multi-agent system that allocates these resources through arg
 Rescuer agents reach the emergencies that appear on a simulated grid and request the specialised units they need, which pilot agents then bring to the scene, while an orchestrator dispatches the rescuers and runs the debates.
 The rescuers take turns revealing facts about their emergency, such as its severity or how often it has been denied, and withdraw when nothing would improve their position.
 After every move, a shared rule base written in Arg2P is evaluated under grounded semantics to find the request that currently wins.
-Repeated denials weigh the most, so waiting requests gain ground, but exceptions protect emergencies in especially dangerous situations, such as those with a critical patient.
+Repeated denials weigh more than any single attribute, so waiting requests gain ground, but dangerous situations count as reasons of their own, and a critical patient outweighs even the denials.
 The agents are written in Jason, and every debate is logged with the arguments that decided it.
 \end{abstract}
 

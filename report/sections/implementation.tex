@@ -23,7 +23,7 @@ Jason runs environment actions on several threads, so the model's methods on eme
 \subsection{The Debate Theory}\label{subsec:impl_theory}
 
 The domain rules shared by all agents are in \texttt{arg/debate.pl}, they never change during a run and the Java side only appends facts to them: \texttt{contender(E)} for each emergency still claiming the resource and \texttt{val(E, Reason, Value)} for each revealed value.
-\Cref{fig:impl_theory} shows the core rules, without the helper predicates, the situations and the exceptions, which are summarised in \cref{tab:impl_exceptions}.
+\Cref{fig:impl_theory} shows the core rules, without the helper predicates and the situations, which are summarised in \cref{tab:impl_situations}.
 
 \begin{figure}[htbp]
 \centering
@@ -49,40 +49,39 @@ sup(rank(R1, _, _), rank(R2, _, _)) :- stronger(R1, R2).
 sup(claim(E1), claim(E2)) :- contender(E1), contender(E2), E1 < E2.
 \end{verbatim}
 \end{minipage}
-\caption{Core rules of \texttt{debate.pl}. The situations, the exceptions and the helper predicates are omitted.}
+\caption{Core rules of \texttt{debate.pl}. The situations and the helper predicates are omitted.}
 \label{fig:impl_theory}
 \end{figure}
 
 Each contender has an initial claim to the resource, and a granted emergency excludes the younger ones, so with claims alone the oldest one wins.
-An emergency gets ahead of another on a reason through \texttt{challenge} or \texttt{compare}.
+An emergency gets ahead of another on a reason through \texttt{challenge}, \texttt{compare}, or \texttt{in\_situation}.
 A revealed value that counts as a reason, according to the helper \texttt{worth}, challenges every other contender at once.
+The worst values, such as severity 5 or size 1, do not count.
 The challenged one undercuts it by revealing its own value for the same reason, and from then on \texttt{compare} decides between the two values.
 Being ahead turns into a ranking, and opposite rankings rebut each other, with the stronger reason prevailing.
-As defined in \cref{subsec:detailed_design}, waiting is the strongest reason, followed by severity, collateral risk, trapped victims, escalation, size, and victims; placing waiting on top satisfies the fairness requirement (\cref{subsec:non_functional_requirements}).
-An emergency with someone ranked over it loses its claim, and the arguments that used that claim to exclude younger contenders fall with it, which lets a younger emergency win. %TODO: check!
+As defined in \cref{subsec:detailed_design}, a critical situation is the strongest reason, followed by waiting, the other three situations, severity, collateral risk, trapped victims, escalation, size, and victims; waiting beats every other attribute and every situation except a critical one, which satisfies the fairness requirement (\cref{subsec:non_functional_requirements}).
+An emergency with someone ranked over it loses its claim, and the arguments that used that claim to exclude younger contenders fall with it, which lets a younger emergency win.
 
-The exceptions in \cref{tab:impl_exceptions} protect an emergency in a particular situation by undercutting a ranking against it. %TODO: to change with the new impl
-They hold only while the penalized emergency is not critical, so they fall as soon as it reveals a severity of ESI 1 or 2.
-\texttt{disaster\_scale} also falls when the penalized emergency is a major disaster itself.
-%TODO: to change with the new impl
+The situations in \cref{tab:impl_situations} are concluded by strict rules from the revealed values, and \texttt{in\_situation} puts an emergency that is in a situation ahead of a contender not known to be in it.
+This argument falls once the contender reveals values that complete the same situation.
 \begin{table}[htbp]
 \centering
 \small
 \begin{tabular}{|l|l|l|}
 \hline
-\textbf{Exception} & \textbf{Protected emergency} & \textbf{Blocked ranking} \\
+\textbf{Situation} & \textbf{Condition} & \textbf{Strength} \\
 \hline
-\texttt{life\_first} & critical (ESI $\le 2$) & on waiting \\
-\texttt{no\_time} & spreading (trapped and escalating) & on severity \\
-\texttt{prevent\_catastrophe} & catastrophic (collateral risk, size $\ge 2$) & on severity \\
-\texttt{disaster\_scale} & major disaster (size $\ge 2$, victims $\ge 3$) & on waiting \\
+\texttt{critical} & ESI $\le 2$ & 11 \\
+\texttt{catastrophic} & collateral risk, size $\ge 2$ & 9 \\
+\texttt{major\_disaster} & size $\ge 3$, victims $\ge 8$ & 8 \\
+\texttt{spreading} & trapped and escalating & 7 \\
 \hline
 \end{tabular}
-\caption{Exceptions of the theory, with the situation of the emergency they protect and the ranking that they undercut.}
-\label{tab:impl_exceptions}
+\caption{Situations of the theory, with the values that complete them and their strength as a reason.}
+\label{tab:impl_situations}
 \end{table}
 
-In the debate logged in \cref{fig:sample_debate_log}, emergency 10 takes the lead with a challenge on severity and loses it when 7 answers with the same ESI, since equal values leave the older claim ahead. %TODO: to change with the new impl
+In the debate logged in \cref{fig:sample_debate_log}, emergency 10 takes the lead with a challenge on severity and loses it when 7 answers with the same ESI, since equal values leave the older claim ahead.
 On size, 7 answers with a larger value, and 10, with nothing left that helps, concedes.
 
 \subsection{Internal Actions}\label{subsec:impl_internal_actions}
@@ -92,7 +91,7 @@ On size, 7 answers with a larger value, and 10, with nothing left that helps, co
 The argumentation reasoning is integrated into Jason via two custom internal actions extending \texttt{DefaultInternalAction}, which interface agents with Arg2P through the helper class \texttt{Debate}:
 \begin{itemize}
     \item \texttt{arg.deliberate(Moves, Labels)}: Executed by the orchestrator. It maps the dialogue move history into Prolog facts, evaluates the theory with Arg2P under grounded semantics, and returns the resulting argument labels to identify contenders and manage turn rotation.
-    \item \texttt{arg.choose(Moves, Me, Other, Candidates, Chosen)}: Executed by competing rescuers on their turn. It simulates candidate dialogue moves against an opponent in a pairwise sub-debate and unifies \texttt{Chosen} with the first move that strictly improves the agent's standing. It evaluates single moves first, then candidate pairs for composite exceptions, failing if no candidate improves its position.
+    \item \texttt{arg.choose(Moves, Me, Other, Candidates, Chosen)}: Executed by competing rescuers on their turn. It simulates candidate dialogue moves against an opponent in a pairwise sub-debate and unifies \texttt{Chosen} with the first move that strictly improves the agent's standing. It evaluates single moves first, then candidate pairs for situations that need two values, failing if no candidate improves its position.
 \end{itemize}
 
 \subsubsection{Environment Actions}\label{subsubsec:impl_env_actions}
@@ -113,7 +112,7 @@ Custom environment actions declared in \texttt{EmergencyEnvironment} are dispatc
 
 Requests for the same resource type are buffered by the orchestrator in a window of five steps, run as a separate intention with \texttt{!!} so that it keeps reacting while the window is open.
 When it closes, the orchestrator grants the requests directly if enough pilots of the type are free, and opens a debate if only some are.
-A rescuer maps its emergency onto the seven reasons of the theory, using the number of debates it has lost as its value for waiting.
+A rescuer maps its emergency onto the seven values it can reveal, using the number of debates it has lost as its value for waiting.
 On its turn it runs the plan in \Cref{fig:impl_rescuer_turn}, where \texttt{requesting} holds its request and \texttt{moves} its copy of the debate.
 
 Before each turn it evaluates the debate with \texttt{arg.deliberate}, and the turn rotates among the contenders whose claim is not IN, each receiving the goal \texttt{your\_turn(RT, Target)} with an opponent to target.
@@ -146,7 +145,7 @@ When nobody is left to give the turn to, the winner gets the closest free pilot,
 \label{fig:impl_rescuer_turn}
 \end{figure}
 
-The rescuer first tries to answer a challenge it has not answered yet, offering its value for that reason and then its other unrevealed values, since a different value can trigger an exception.
+The rescuer first tries to answer a challenge it has not answered yet, offering its value for that reason and then its other unrevealed values, since a different value can complete a situation.
 Otherwise it challenges its target with its unrevealed values from the strongest reason down, and if nothing helps it concedes.
 
 \subsection{Dynamic Number of Agents}
@@ -181,6 +180,6 @@ This mechanism allows the system to scale to different population sizes without 
 \subsection{Logging and Testing}\label{subsec:impl_view}
 
 The orchestrator logs every debate through environment actions that forward the events to \texttt{DebateLogger}, which writes one file per debate (\cref{subsec:persistent_logs}) and updates the side panel.
-With each status update the orchestrator logs the rank and exception rules that are IN, and the logger uses the final list as the justification of the debate or, if it is empty because the others conceded, the last reason seen during the debate.
+With each status update the orchestrator logs the rank rules that are IN, whose reason can also be a situation, and the logger uses the final list as the justification of the debate or, if it is empty because the others conceded, the last reason seen during the debate.
 
 JUnit tests cover the theory rule by rule, the move choice of \texttt{arg.choose}, the environment and the model, and a GitHub Actions workflow runs them, together with a Spotless formatting check, on every pull request toward \texttt{main} and \texttt{develop}.

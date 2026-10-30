@@ -8,7 +8,7 @@ The primary engineering challenge is \emph{resource contention}: while field res
 
 Standard allocation strategies like First-Come-First-Served or static scoring either ignore urgency or rely on opaque numerical formulas. Instead, Debate2Rescue models allocation as an argumentation process.
 Rescuers evaluate local incident conditions (such as severity, victim count, or trapped individuals) and deliberate using Arg2P.
-Formal domain rules and exceptions resolve conflicts under grounded semantics, assigning the contested resource to the most justified claim.
+Formal domain rules and situations resolve conflicts under grounded semantics, assigning the contested resource to the most justified claim.
 
 \subsection{System Roles and Responsibilities}
 \label{subsec:system_roles}
@@ -37,7 +37,7 @@ The functional requirements describe the core features and operations that the s
     
     \item \textbf{Request Window:} When resource requests arrive, the orchestrator collects them within a short time window. If the number of competing requests exceeds available units, a debate is opened; if units are sufficient, they are granted directly.
     
-    \item \textbf{Argumentation-Based Deliberation:} Contending rescuers participate in a turn-based dialogue using custom performatives. Moves are evaluated via Arg2P using grounded semantics to determine the winning emergency based on explicit domain rules and exceptions.
+    \item \textbf{Argumentation-Based Deliberation:} Contending rescuers participate in a turn-based dialogue using custom performatives. Moves are evaluated via Arg2P using grounded semantics to determine the winning emergency based on explicit domain rules and situations.
     
     \item \textbf{Rescue Execution and Agent Lifecycle:} The assigned pilot travels to the incident and executes the rescue. Once resolved, the emergency is removed, and both responders return to base to become available again. Denied contenders retain their requests for subsequent allocation rounds.
     
@@ -52,9 +52,9 @@ The functional requirements describe the core features and operations that the s
 The non-functional requirements define the quality attributes and operational constraints of the application:
 
 \begin{itemize}
-    \item \textbf{Explainability:} Every allocation decision must provide an explicit, rule-based chain of arguments, clearly showing which criteria or exceptions decided the outcome.
+    \item \textbf{Explainability:} Every allocation decision must provide an explicit, rule-based chain of arguments, clearly showing which criteria or situations decided the outcome.
     
-    \item \textbf{Fairness:} Lower-priority emergencies must not be starved indefinitely. Each denial increases an emergency's accumulated waiting weight, allowing older requests to eventually take precedence over higher-severity but newer incidents.
+    \item \textbf{Fairness:} Lower-priority emergencies must not be starved indefinitely. Each denial increases an emergency's accumulated waiting weight, allowing older requests to eventually take precedence over higher-severity but newer non-critical incidents.
     
     \item \textbf{Performance:} Deliberation through Arg2P, pathfinding, and visual updates must execute with minimal latency, ensuring a smooth simulation loop and a responsive user interface.
     
