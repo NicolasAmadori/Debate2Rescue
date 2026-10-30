@@ -192,7 +192,6 @@ Each log file contains three parts:
 
 A sample debate log is shown in \Cref{fig:sample_debate_log}.
 
-%TODO: to change with the new impl
 \begin{figure}[htbp]
 \centering
 \begin{minipage}{0.95\textwidth}
@@ -206,7 +205,7 @@ Contenders: c(7,rescuer_15), c(10,rescuer_13)
 Contender Emergency Infos:
   * rescuer_15 (Emergency #7): FIRE | Severity: LESS_URGENT (ESI 4)
     | Victims: 12 | Trapped: no | Escalating: no
-  * rescuer_13 (Emergency #10): FIRE | Severity: LESS_URGENT (ESI 4)
+  * rescuer_13 (Emergency #10): FIRE | Severity: EMERGENT (ESI 2)
     | Victims: 2  | Trapped: no | Escalating: no
 =================================================================
 
@@ -216,32 +215,22 @@ Contender Emergency Infos:
        >>> Status: Leading Emergency = 7 | Reason: []
 
 [2026-10-28 14:35:54] Move #5: rescuer_13 (Emergency 10) -> CHALLENGE:
-       challenge(7,severity,4)
-       >>> Status: Leading Emergency = 10 | Reason: [rank(severity,10,7)]
+       challenge(7,severity,2)
+       >>> Status: Leading Emergency = 10 | Reason:
+       [rank(severity,10,7),rank(critical,10,7)]
 
-[2026-10-28 14:36:07] Move #12: rescuer_15 (Emergency 7) -> ANSWER:
-       answer(5,severity,4)
-       >>> Status: Leading Emergency = 7 | Reason: []
-
-[2026-10-28 14:36:33] Move #15: rescuer_13 (Emergency 10) -> CHALLENGE:
-       challenge(7,size,2)
-       >>> Status: Leading Emergency = 10 | Reason: [rank(size,10,7)]
-
-[2026-10-28 14:37:30] Move #22: rescuer_15 (Emergency 7) -> ANSWER:
-       answer(15,size,3)
-       >>> Status: Leading Emergency = 7 | Reason: [rank(size,7,10)]
-
-[2026-10-28 14:38:33] Move #30: rescuer_13 (Emergency 10) -> CONCEDE:
+[2026-10-28 14:36:07] Move #9: rescuer_15 (Emergency 7) -> CONCEDE:
        "withdrew claim"
-       >>> Status: Leading Emergency = 7 | Reason: []
+       >>> Status: Leading Emergency = 10 | Reason: []
 
 =================================================================
 DEBATE #1 CONCLUDED: Resource Type [fire_truck]
-Timestamp: 2026-10-28 14:38:33
-FINAL DECISION: Winner is Emergency 7
-DENIED CONTENDERS: c(10,rescuer_13) [conceded]
-JUSTIFICATION: All opponent(s) conceded (deciding argument: size)
-TOTAL MOVES: 30
+Timestamp: 2026-10-28 14:36:07
+FINAL DECISION: Winner is Emergency 10
+DENIED CONTENDERS: c(7,rescuer_15) [conceded]
+JUSTIFICATION: All opponent(s) conceded (deciding argument:
+       [rank(severity,10,7),rank(critical,10,7)])
+TOTAL MOVES: 4
 =================================================================
 \end{verbatim}
 \end{minipage}
