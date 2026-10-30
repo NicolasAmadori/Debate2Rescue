@@ -370,6 +370,10 @@ public final class LogFormatter {
       case "trapped" -> "Trapped Victims";
       case "escalating" -> "Escalation Risk";
       case "waiting" -> "Wait Time / Denials";
+      case "critical" -> "Critical Condition";
+      case "catastrophic" -> "Catastrophic Risk";
+      case "major_disaster" -> "Major Disaster";
+      case "spreading" -> "Spreading Emergency";
       default -> raw;
     };
   }

@@ -121,7 +121,7 @@ public class SimModel extends GridWorldModel {
             pos,
             availableTypes.get(random.nextInt(availableTypes.size())),
             severities[random.nextInt(severities.length)],
-            random.nextInt(MAX_VICTIMS) + 1,
+            random.nextInt(MAX_VICTIMS + 1),
             random.nextDouble() < Config.TRAPPED_PROB,
             random.nextDouble() < Config.ESCALATING_PROB,
             sizes[random.nextInt(sizes.length)],

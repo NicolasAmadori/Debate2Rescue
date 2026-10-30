@@ -80,13 +80,13 @@ public class ChooseTest {
   }
 
   @Test
-  public void testTwoValuesAreNeededForDisasterScale() throws Exception {
-    // 1 is over 2 on waiting: size or victims alone do not help, both together do
+  public void testTwoValuesAreNeededForMajorDisaster() throws Exception {
+    // 1 is over 2 on severity: size or victims alone do not help, both together do
     String moves =
         "[move(1, 1, claim), move(2, 2, claim),"
-            + " move(3, 1, challenge(2, waiting, 2)), move(4, 2, answer(3, waiting, 0))]";
+            + " move(3, 1, challenge(2, severity, 3)), move(4, 2, answer(3, severity, 4))]";
 
-    assertTrue(choose(moves, 2, 1, "[challenge(1, size, 2), challenge(1, victims, 4)]"));
-    assertEquals("challenge(1,size,2)", un.get(chosen).toString());
+    assertTrue(choose(moves, 2, 1, "[challenge(1, size, 3), challenge(1, victims, 8)]"));
+    assertEquals("challenge(1,size,3)", un.get(chosen).toString());
   }
 }
