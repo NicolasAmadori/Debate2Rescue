@@ -32,7 +32,7 @@ flowchart TB
         IA["Jason Internal Actions<br/>• arg.deliberate<br/>• arg.choose"]
         Bridge["Debate.java Bridge"]
         Engine["Arg2P Solver (2P-Kt)<br/>• Argument Graph Builder<br/>• Grounded Semantics Evaluator"]
-        Theory["Prolog Theory (debate.pl)<br/>• Reason Priority Hierarchy<br/>• Exception Undercuts"]
+        Theory["Prolog Theory (debate.pl)<br/>• Reason Priority Hierarchy<br/>• Situations as Reasons"]
         IA --> Bridge
         Bridge --> Engine
         Engine --> Theory
