@@ -21,7 +21,14 @@ The architecture consists of five main layers:
     \item \textbf{Observability and User Interface Layer (Swing):} It provides a real-time visual representation of the grid, dynamic controls for simulation parameters, an interactive debate arena, and an audit logger that persists debate transcripts to disk.
 \end{enumerate}
 
-\TODO{Add architecture diagram illustrating the interaction between the Java environment, Jason BDI runtime, Arg2P engine, and GUI.}
+\Cref{fig:architecture_diagram} illustrates the overall system architecture and the relationships among the five layers, highlighting the communication channels and data flow between the Java simulation environment, the Jason BDI runtime and agents, the \textsf{Arg2P} argumentation engine, and the Swing graphical user interface.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.50\textwidth]{figures/architecture.png}
+    \caption{System architecture diagram depicting the interaction between the Java simulation environment, the Jason BDI runtime and agents, the \textsf{Arg2P} argumentation engine, and the Swing GUI.}
+    \label{fig:architecture_diagram}
+\end{figure}
 
 \subsection{Detailed Design}
 \label{subsec:detailed_design}
