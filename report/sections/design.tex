@@ -1,1 +1,161 @@
-\section{Design}\label{sec:design}
+\section{Design}
+\label{sec:design}
+
+\subsection{Architecture}
+\label{subsec:architecture}
+
+The system consists of a multi-agent architecture designed to separate the physical simulation environment, the BDI reasoning loop, and the argumentation engine.
+
+Agent-environment interaction follows the standard perception-action loop: agents receive environmental percepts and perform physical actions. Agent coordination is realized through asynchronous messages using both standard and custom performatives designed for argumentation dialogues.
+
+The architecture consists of five main layers:
+\begin{enumerate}
+    \item \textbf{Environment and Simulation Layer (Java):} Managed by the simulation environment (\texttt{EmergencyEnvironment}) and the domain model (\texttt{SimModel}). It manages the 2D grid, obstacles, stations, and emergencies. A dedicated thread generates emergencies according to the selected spawn rates, while the environment executes agent actions and updates agent percepts.
+    
+    \item \textbf{MAS Infrastructure Layer (Jason):} This layer is based on the centralized Jason infrastructure declared in \texttt{debate2rescue.mas2j} and manages the execution cycle of BDI agents, scheduling plan intentions and delivering messages through the agent communication channel.
+    
+    \item \textbf{Agent Layer (AgentSpeak):} Defines the autonomous entities that operate in the system: the Orchestrator, Rescuers, and Pilots. Agents maintain local beliefs, react to environment percepts, and coordinate through communication protocols.
+    
+    \item \textbf{Argumentation Layer (Arg2P):} Implements debates argumentations using Arg2P. It evaluates argumentation theories defined in Prolog and, through the use of custom Jason internal actions, integrates the results with the BDI agents.
+    
+    \item \textbf{Observability and User Interface Layer (Swing):} It provides a real-time visual representation of the grid, dynamic controls for simulation parameters, an interactive debate arena, and an audit logger that persists debate transcripts to disk.
+\end{enumerate}
+
+\TODO{Add architecture diagram illustrating the interaction between the Java environment, Jason BDI runtime, Arg2P engine, and GUI.}
+
+\subsection{Detailed Design}
+\label{subsec:detailed_design}
+
+\subsubsection{Operational Workflows}
+
+The overall response cycle proceeds through four sequential phases:
+
+\begin{enumerate}
+    \item \textbf{Emergency Detection and Dispatch:} When an emergency appears on the grid, the orchestrator receives the corresponding percept. It identifies all idle rescuers, calculates their grid distance to the incident, and assigns the closest one. The assigned rescuer navigates step by step toward the incident location.
+    
+    \item \textbf{On-Site Triage:} Upon reaching the emergency cell, the rescuer invokes \texttt{start\_rescue} to uncover the specific attributes of the incident: severity level, victim count, trapped individuals, escalating danger, physical size, and collateral risk. Using a local belief table, the rescuer identify the required resource and sends a request to the orchestrator.
+    
+    \item \textbf{Request Window and Contention Detection:} To avoid greedy, first-come-first-served allocations, the orchestrator groups incoming requests within a short time window. Once the window closes:
+    \begin{itemize}
+        \item If the number of competing requests for a given resource type is less than or equal to the number of free units, the orchestrator grants the resources directly.
+        \item If requests exceed the available units, resource contention occurs and the orchestrator starts a new debate.
+    \end{itemize}
+    
+    \item \textbf{Rescue Execution:} The pilot assigned to the winning emergency travels to the site. The time required to resolve the emergency is proportional to the emergency difficulty and, once resolved, the emergency is cleared from the environment, and both the rescuer and the pilot return to their base station, informing the orchestrator that they are free. Rescuers whose claims were denied remain on-site and increment their denial counter, gaining priority in subsequent allocation rounds.
+\end{enumerate}
+
+\subsubsection{Argumentation Model and Custom Performatives}
+
+Resource allocation disputes are solved through structured argumentation rather than numerical scoring functions.
+
+The argumentation theory models claims, evidence, principles, and preference rules:
+\begin{itemize}
+    \item \textbf{Claims and Basic Ranking:} Contenders assert a claim for the resource (\texttt{claim(E)}). Claims are ranked based on a strict priority hierarchy of emergency reasons:
+    \begin{center}
+    \texttt{waiting} $>$ \texttt{severity} $>$ \texttt{collateral\_risk} $>$ \texttt{trapped} $>$ \texttt{escalating} $>$ \texttt{size} $>$ \texttt{victims}
+    \end{center}
+    Accumulated waiting time (the number of prior denials) is prioritized by default to prevent starvation. Severity is represented numerically where smaller numbers indicate higher criticality.
+    
+    \item \textbf{Exceptions:} To handle critical situations where default priorities would lead to suboptimal decisions, the theory defines some exception rules that undercut standard rankings:
+    \begin{itemize}
+        \item \texttt{life\_first}: A critical incident ($\mathrm{severity} \le 2$) undercuts the priority of waiting time of a non-critical incident.
+        \item \texttt{no\_time}: An emergency that is both spreading and trapping individuals undercuts severity differences against non-critical incidents.
+        \item \texttt{prevent\_catastrophe}: An incident presenting collateral risk at large scale ($\mathrm{size} \ge 2$) undercuts severity differences.
+        \item \texttt{disaster\_scale}: A major disaster with large size ($\mathrm{size} \ge 2$) and multiple victims ($\mathrm{victims} \ge 3$) undercuts waiting time.
+    \end{itemize}
+    
+    \item \textbf{Tie-Breaking:} If two claims have identical attributes and no exception applies, the older emergency ID wins.
+\end{itemize}
+
+\paragraph{Custom Performatives.}
+Standard agent communication languages provide general-purpose performatives, but lack speech acts dedicated to argumentation. We extend agent communication in Jason by introducing four custom performatives handled via the \texttt{+!kqml\_received} pattern:
+
+\begin{itemize}
+    \item \texttt{argue}: Used by the orchestrator to announce the start of a debate and broadcast claims or newly admitted moves to all contenders.
+    \item \texttt{challenge}: Used by a contending rescuer to attack a competitor by revealing an emergency attribute where it holds an advantage.
+    \item \texttt{answer}: Used by a challenged rescuer to defend its claim, either by revealing a better value on the challenged reason or by introducing features that trigger an exception undercut.
+    \item \texttt{concede}: Used by a rescuer to withdraw its claim when it cannot construct any valid move that improves its standing under \textsf{Arg2P}.
+\end{itemize}
+
+\TODO{Add table summarizing the custom performatives (argue, challenge, answer, concede), including sender, receiver, payload parameters, and operational semantics.}
+
+\TODO{Add sequence diagram illustrating the turn-based debate dialogue between the Orchestrator and competing Rescuers.}
+
+\subsubsection{Internal Actions}
+
+Two custom Jason internal actions integrate \textsf{Arg2P} into the agents' reasoning cycles:
+
+\begin{itemize}
+    \item \texttt{arg.deliberate(Moves, Labels)}: Executed by the orchestrator. It builds the argumentation theory from the move history, evaluates the graph using grounded semantics, and returns the status of each claim (\texttt{in}, \texttt{out}, \texttt{und}) along with the active winning justification (\texttt{winning\_reason}).
+    
+    \item \texttt{arg.choose(Moves, Me, Target, Candidates, SelectedMove)}: Executed by rescuers on their turn. It selects the first candidate that strictly improves its position against the target competitor. If no candidate improves its position, the internal action fails, prompting the rescuer to send a \texttt{concede} move.
+\end{itemize}
+
+\subsection{Agent Modeling}
+\label{subsec:agent_modeling}
+
+\subsubsection{Orchestrator Agent}
+\begin{itemize}
+    \item \textbf{Beliefs:} Tracks detected emergencies (\texttt{emergency}), idle rescuers (\texttt{availableRescuer}), available resource units (\texttt{availableResource}), active collection windows (\texttt{window}), and debate states (\texttt{debate}, \texttt{debate\_id}, \texttt{move}, \texttt{turn}).
+    \item \textbf{Plans:}
+    \begin{itemize}
+        \item \texttt{!assign}: Assigns available rescuers to new incidents, prioritizing the closest rescuer.
+        \item \texttt{!close\_window}: Closes the request collection window and initiates resource allocation or debate.
+        \item \texttt{!deliberate}: Evaluates whether a debate is needed or if resources can be granted directly.
+        \item \texttt{!next\_turn} and \texttt{!give\_turn}: Coordinates turn rotation among contenders whose claims are not accepted under grounded semantics.
+        \item \texttt{!grant}: Dispatches the nearest available pilot to the winning incident.
+    \end{itemize}
+    \item \textbf{Concurrency:} Critical plans handling resource state and debate updates are declared as atomic to ensure thread safety when concurrent events occur simultaneously.
+\end{itemize}
+
+\subsubsection{Rescuer Agent}
+\begin{itemize}
+    \item \textbf{Beliefs:} Stores the assigned emergency ID and location, perceived emergency facts, the required resource type (\texttt{requesting}), the accumulated denial count (\texttt{denials}), and the debate moves history.
+    \item \textbf{Plans:}
+    \begin{itemize}
+        \item \texttt{!handle}: Receives an incident assignment, navigates to the target cell, and performs triage.
+        \item \texttt{!evaluate} and \texttt{!make\_request}: Identifies the necessary specialized resource and submits the request to the orchestrator.
+        \item \texttt{!your\_turn}: Activated when the orchestrator prompts the rescuer to speak. It evaluates candidate defenses or attacks via \texttt{arg.choose} and emits an \texttt{answer}, \texttt{challenge}, or \texttt{concede} message.
+        \item \texttt{!go\_home}: Returns to the base station after emergency resolution and announces availability.
+    \end{itemize}
+    \item \textbf{Strategy:} Rescuers disclose emergency attributes incrementally only when required to counter an opponent's argument, minimizing communication overhead.
+\end{itemize}
+
+\subsubsection{Pilot Agent}
+\begin{itemize}
+    \item \textbf{Beliefs:} Maintains the assigned base station coordinates, its specialized resource type, and its availability status.
+    \item \textbf{Plans:}
+    \begin{itemize}
+        \item \texttt{!start}: Initializes the agent in the environment and informs the orchestrator of its readiness.
+        \item \texttt{!move\_to\_emergency}: Dispatched by the orchestrator upon winning a debate. The pilot navigates to the incident, simulates the rescue operation duration ($2 \times \mathrm{severity} + \mathrm{victims}$), resolves the emergency, signals the waiting rescuer, and returns to base.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Dynamic Number of Agents}
+\label{subsec:dynamic_agents}
+
+To support arbitrary configurations without manual configuration editing, the project separates agent instantiation from the static project file: only the orchestrator agent is statically declared, while rescuer and pilot agents are spawned dynamically at runtime during environment startup based on the configuration chosen by the user.
+
+To ensure scenario validity and operational balance, the system enforces population boundaries calculated from the average grid dimension $M$ and the station count $S$:
+\begin{itemize}
+    \item \textbf{Rescuers:} Bounded such that $S \le \mathrm{rescuers} \le 4 \times S$. This guarantees that every base station has at least one initial rescuer, with a maximum of four rescuers per station.
+    \item \textbf{Pilots:} Bounded such that $\max(S, 9) \le \mathrm{pilots} \le 4 \times S$. The lower bound of 9 guarantees that each of the nine specialized resource types (fire truck, ambulance, police car, hazmat team, bomb squad, army, excavator, police helicopter, helicopter) has at least one pilot available in the simulation.
+\end{itemize}
+
+Because dynamic agents are created after the orchestrator has started, they register through a standardized startup handshake protocol:
+\begin{enumerate}
+    \item Upon instantiation, the agent executes its initial goal \texttt{!start}.
+    \item The agent calls an environment action (\texttt{join\_as\_rescuer} or \texttt{join\_as\_pilot}), which places the agent entity at an available base station in the grid model.
+    \item The agent sends an informative message to the orchestrator:
+    \begin{center}
+    \texttt{.send(orchestrator, tell, free(rescuer))}
+    \end{center}
+    for rescuers, or:
+    \begin{center}
+    \texttt{.send(orchestrator, tell, free(pilot))}
+    \end{center}
+    for pilots.
+    \item The orchestrator handles these messages dynamically, registering available rescuers (\texttt{+availableRescuer(R)}) or pilots (\texttt{+availableResource(RT, P)}) into its belief base.
+\end{enumerate}
+
+This mechanism allows the system to scale to different population sizes without altering agent source code or restarting the multi-agent infrastructure.
