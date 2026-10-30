@@ -41,7 +41,7 @@ value(Id, escalating, 0) :- requesting(Id, _, F) & not .member(escalating, F).
 value(Id, size, S) :- requesting(Id, _, F) & .member(size(S), F).
 value(Id, victims, V) :- requesting(Id, _, F) & .member(victims(V), F).
 
-// I challenge only with a reason I really have, the worst value is not one (not trapped, severity 5, size 1)
+// Challenges are sent only for meaningful values, minimum values are not relevant
 // keep it in sync with worth in debate.pl
 worth(waiting, N) :- N > 0.
 worth(severity, S) :- S < 5.

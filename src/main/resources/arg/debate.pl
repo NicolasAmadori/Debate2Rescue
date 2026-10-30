@@ -26,7 +26,7 @@ challenge(R, E1, E2) : val(E1, R, V1), prolog(worth(R, V1)), prolog(contender(E2
 answer(R, E2, E1) : val(E2, R, V2), prolog(contender(E1)), prolog(E1 \== E2) => undercut(challenge(R, E1, E2)).
 
 /* Principles */
-% being ahead on a reason puts E1 over E2, the exceptions below undercut this step
+% being ahead on a reason puts E1 over E2
 rank(R, E1, E2) : ahead(R, E1, E2) => over(E1, E2).
 
 % E1 and E2 cannot be over each other
@@ -36,25 +36,19 @@ asym(E1, E2) : over(E1, E2) -> -over(E2, E1).
 beaten(E1, E2) : over(E1, E2) => -grant(E2).
 
 /* Situations, named from the revealed values */
-critical(E) : val(E, severity, S), prolog(S =< 2) -> critical(E).
+critical(E) : val(E, severity, S), prolog(S =< 2) -> situation(critical, E).
 
 % people are trapped and the situation is getting worse
-spreading(E) : val(E, trapped, 1), val(E, escalating, 1) -> spreading(E).
+spreading(E) : val(E, trapped, 1), val(E, escalating, 1) -> situation(spreading, E).
 
 % emergency threatening collateral damage at scale
-catastrophic(E) : val(E, collateral_risk, 1), val(E, size, S), prolog(S >= 2) -> catastrophic(E).
+catastrophic(E) : val(E, collateral_risk, 1), val(E, size, S), prolog(S >= 2) -> situation(catastrophic, E).
 
-% large-scale disaster with multiple victims
-major_disaster(E) : val(E, size, S), val(E, victims, V), prolog(S >= 2), prolog(V >= 3) -> major_disaster(E).
+% large-scale disaster with many victims
+major_disaster(E) : val(E, size, S), val(E, victims, V), prolog(S >= 2), prolog(V >= 3) -> situation(major_disaster, E).
 
-/* Exceptions */
-life_first(E1, E2) : critical(E2), prolog(contender(E1)), prolog(E1 \== E2), ~(critical(E1)) => undercut(rank(waiting, E1, E2)).
-
-no_time(E1, E2) : spreading(E1), prolog(contender(E2)), prolog(E1 \== E2), ~(critical(E2)) => undercut(rank(severity, E2, E1)).
-
-prevent_catastrophe(E1, E2) : catastrophic(E1), prolog(contender(E2)), prolog(E1 \== E2), ~(critical(E2)) => undercut(rank(severity, E2, E1)).
-
-disaster_scale(E1, E2) : major_disaster(E2), prolog(contender(E1)), prolog(E1 \== E2), ~(critical(E1)), ~(major_disaster(E1)) => undercut(rank(waiting, E1, E2)).
+% an emergency in a situation should not be put on top of another in the same situation
+in_situation(S, E1, E2) : situation(S, E1), prolog(contender(E2)), prolog(E1 \== E2), ~(situation(S, E2)) => ahead(S, E1, E2).
 
 /* Preferences */
 % being behind someone is stronger than the claim alone
@@ -67,8 +61,12 @@ sup(rank(R1, _, _), rank(R2, _, _)) :- stronger(R1, R2).
 % This is used as a tie-breaker, everything else should come from the debate
 sup(claim(E1), claim(E2)) :- contender(E1), contender(E2), E1 < E2.
 
-/* Reasons hierarchy, the higher the strength value, the stronger the reason */
-strength(waiting, 7).
+% Reasons hierarchy, the higher the strength value, the stronger the reason
+strength(critical, 11).
+strength(waiting, 10).
+strength(catastrophic, 9).
+strength(major_disaster, 8).
+strength(spreading, 7).
 strength(severity, 6).
 strength(collateral_risk, 5).
 strength(trapped, 4).
@@ -78,8 +76,9 @@ strength(victims, 1).
 
 stronger(R1, R2) :- strength(R1, S1), strength(R2, S2), S1 > S2.
 
-/* Value V is a reason to be ahead of who did not reveal it: the worst value cannot beat anyone, so it is not one
-   (trapped = 0, severity 5, size 1), keep it in sync with worth in rescuer.asl */
+/* Value V is a reason to be ahead of who did not reveal it
+   worst value should not be sent because useless.
+   keep it in sync with worth in rescuer.asl */
 worth(waiting, V) :- V > 0.
 worth(severity, S) :- S < 5.
 worth(collateral_risk, 1).
